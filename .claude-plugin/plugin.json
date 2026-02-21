@@ -1,0 +1,7 @@
+{
+  "name": "archmap",
+  "description": "Generate interactive 2D codebase architecture maps with pan/zoom, module inspector, dependency graphs, and switchable themes",
+  "author": {
+    "name": "Justin"
+  }
+}
