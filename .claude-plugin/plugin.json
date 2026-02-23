@@ -2,6 +2,8 @@
   "name": "archmap",
   "version": "0.1.0",
   "description": "Generate interactive 2D codebase architecture maps with pan/zoom, module inspector, dependency graphs, and switchable themes",
+  "commands": "./commands/",
+  "agents": "./agents/",
   "author": {
     "name": "Justin"
   }

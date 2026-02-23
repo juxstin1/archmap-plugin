@@ -1,3 +1,8 @@
+---
+description: Generate an interactive 2D codebase architecture map and markdown export.
+argument-hint: "[path] [--refresh]"
+---
+
 # /archmap - Interactive Codebase Architecture Map
 
 Generate an interactive 2D web visualization of any codebase's architecture with pan/zoom, module inspector, dependency edges, and 4 switchable themes (Dark, Light, Claude, OpenAI).
@@ -16,7 +21,7 @@ When user runs `/archmap`:
 
 ### Phase 1: Explore the Codebase
 
-Use the Task tool with `subagent_type: Explore` to **thoroughly** analyze the codebase. The agent must discover:
+Use the Task tool with `subagent_type: archmap:archmap-explorer` to **thoroughly** analyze the codebase. The agent must discover:
 
 1. **All source files** — file paths, approximate line counts
 2. **Module structure** — how the project is organized (directories, packages, modules)
@@ -26,7 +31,9 @@ Use the Task tool with `subagent_type: Explore` to **thoroughly** analyze the co
 6. **Data flow pipeline** — how data moves through the system (e.g., input → parse → transform → output)
 7. **External dependencies** — major crates, packages, libraries used
 
-The Explore agent prompt should be:
+The agent prompt is defined in `agents/archmap-explorer.md`.
+
+If you must fall back to built-in `Explore`, use this prompt:
 ```
 Thoroughly explore the codebase at <path>. For every source file, report:
 - File path and approximate line count
