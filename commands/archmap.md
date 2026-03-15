@@ -19,6 +19,19 @@ Generate an interactive 2D web visualization of any codebase's architecture with
 
 When user runs `/archmap`:
 
+### Phase 0: Load Configuration
+
+Before exploring, check for `.archmap.json` in the project root (or target path root). If present, load:
+
+- **`exclude`** — array of paths/patterns to skip during exploration (e.g., `["node_modules", "dist", ".git", "vendor"]`)
+- **`tiers`** — object mapping path prefixes to tier assignments (e.g., `{"src/api/": "api", "src/models/": "data"}`)
+- **`pinned`** — array of module IDs that should never be removed or re-tiered
+- **`output.html`** — custom output path for HTML (default: `docs/architecture.html`)
+- **`output.markdown`** — custom output path for markdown (default: `docs/architecture-map.md`)
+- **`theme`** — default theme to apply (default: `dark`)
+
+If no `.archmap.json` exists, use defaults. Pass exclude paths and tier overrides to the explorer agent.
+
 ### Phase 1: Explore the Codebase
 
 Use the Task tool with `subagent_type: archmap:archmap-explorer` to **thoroughly** analyze the codebase. The agent must discover:

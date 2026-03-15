@@ -1,6 +1,8 @@
 ---
 name: archmap-explorer
 description: Thoroughly explores a codebase and returns modules, internal dependencies, tiers, and pipeline flow for /archmap.
+model: inherit
+color: cyan
 ---
 
 # archmap-explorer

@@ -1,10 +1,14 @@
 {
   "name": "archmap",
-  "version": "0.1.0",
-  "description": "Generate interactive 2D codebase architecture maps with pan/zoom, module inspector, dependency graphs, and switchable themes",
+  "version": "1.0.0",
+  "description": "Interactive codebase architecture platform — generate, repair, focus, and diff architecture maps with canvas visualization, contextual intelligence, and live staleness detection",
   "commands": "./commands/",
   "agents": "./agents/",
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json",
   "author": {
     "name": "Justin"
-  }
+  },
+  "license": "MIT",
+  "keywords": ["architecture", "visualization", "codebase", "dependencies", "canvas"]
 }
