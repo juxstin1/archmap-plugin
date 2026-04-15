@@ -80,13 +80,16 @@ Optional per-project config in project root:
 - `exclude` — paths to skip during exploration
 - `tiers` — path-prefix-to-tier mapping overrides
 - `pinned` — module IDs that can't be removed or re-tiered
-- `output.html` / `output.markdown` — custom output paths
+- `output.html` / `output.markdown` — custom output paths (hooks read `output.html` when deciding which file to watch for staleness)
 - `theme` — default theme
+- `hooks.sessionStart` — set to `false` to silence the SessionStart staleness nudge
 
 ## Hooks
 
-- **SessionStart** — `detect-unmapped.sh` checks for missing/stale `docs/architecture.html`, suggests `/archmap` or `/archmap:repair`
-- **PostToolUse (Write|Edit)** — `flag-stale-modules.sh` checks if edited file appears in the map, suggests repair/focus
+Both hook scripts are `set -euo pipefail`, exit 0 on any failure path so a broken hook can never block a session, and honour `.archmap.json` (output path override + sessionStart opt-out). `jq` is used when available; scripts fall back to conservative regex parsing when it isn't.
+
+- **SessionStart** — `detect-unmapped.sh` checks for missing/stale map file (`docs/architecture.html` by default), suggests `/archmap` or `/archmap:repair`. Uses `git ls-files` for fast, `.gitignore`-aware staleness detection on git repos; falls back to a depth-capped `find` otherwise.
+- **PostToolUse (Write|Edit)** — `flag-stale-modules.sh` receives the tool payload on STDIN (per Claude Code hook spec), extracts `tool_input.file_path`, and scopes its search to the modules block of the map so it can't false-match on CSS/comments.
 
 ## Key Conventions
 
