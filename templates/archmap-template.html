@@ -423,6 +423,19 @@ const legendItems = {{LEGEND_JSON}};
 // Empty object when no layout.json exists in the project.
 const layoutOverrides = {{LAYOUT_JSON}};
 
+// Version history — snapshots of prior map states so the Phase 2
+// timeline scrubber can play back architectural evolution. Append-only:
+// /archmap:snapshot adds entries, /archmap:repair and /archmap:focus
+// auto-snapshot before mutating unless --no-snapshot is passed.
+//
+// Shape per entry:
+//   { version, date, commit?, note, modules, edges, tierLabels,
+//     pipelineSteps?, legendItems?, layoutOverrides? }
+//
+// The newest entry's arrays always mirror the top-level `modules` /
+// `edges` etc. so code that ignores history keeps working.
+const history = {{HISTORY_JSON}};
+
 // Preserve original positions so "Reset layout" can restore them even
 // after the user has dragged modules around. This runs before any
 // drag handlers attach and before applyLayoutOverrides below.

@@ -67,6 +67,8 @@ claude --plugin-dir "$(pwd)"
 | `/archmap:focus <module>` | Deep-dive and repair a specific module |
 | `/archmap:diff` | Show architectural drift since last map |
 | `/archmap:diff --output docs/` | Write drift report to file |
+| `/archmap:snapshot` | Save a version snapshot to the map's history |
+| `/archmap:snapshot --name v1.0 --note "..."` | Named snapshot with custom note |
 
 ## How it works
 
@@ -123,6 +125,11 @@ The `$schema` field is optional — adding it gives you **autocomplete, validati
 | `hooks.sessionStart` | `boolean` | `true` | Set to `false` to silence the session-start staleness nudge. |
 | `layout.respectOverrides` | `boolean` | `true` | When `true`, generation reads `.archmap/layout.json` and preserves your manually-arranged module positions. |
 | `layout.overridePath` | `string` | `.archmap/layout.json` | Path the generator reads for user-arranged positions. Produced by the Edit mode's "Save → Download layout.json" button in the HTML UI. |
+| `history.enabled` | `boolean` | `true` | Master switch for version history. When `false`, `/archmap:snapshot` errors out. |
+| `history.autoSnapshotOnRepair` | `boolean` | `true` | When `true`, `/archmap:repair` auto-snapshots before mutating. |
+| `history.autoSnapshotOnFocus` | `boolean` | `true` | When `true`, `/archmap:focus` auto-snapshots before mutating. |
+| `history.maxInlineSnapshots` | `integer` | `50` | Number of most-recent snapshots kept inline in the HTML before older ones spill to sibling JSON files. |
+| `history.spillPath` | `string` | `.archmap/snapshots` | Directory for overflow snapshot files. |
 
 **Available tier keys:** `entry`, `frontend`, `ir`, `codegen`, `runtime`, `lint`, `driver`, `data`, `api`, `ui`, `infra`, `util`, `test`, `config`.
 

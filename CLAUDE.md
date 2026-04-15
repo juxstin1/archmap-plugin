@@ -17,6 +17,7 @@ commands/
   archmap-repair.md               ← /archmap:repair — detect and fix map issues
   archmap-focus.md                ← /archmap:focus <module> — deep-dive one module
   archmap-diff.md                 ← /archmap:diff — detect architectural drift
+  archmap-snapshot.md             ← /archmap:snapshot — save a version snapshot to history
 agents/
   archmap-explorer.md             ← Full codebase exploration (used by /archmap)
   archmap-repair-agent.md         ← Targeted re-exploration (used by repair/focus/diff)
@@ -62,6 +63,7 @@ The HTML template uses these exact placeholder strings (double-curly-brace forma
 - `{{PIPELINE_JSON}}` — JSON array of pipeline steps
 - `{{LEGEND_JSON}}` — JSON array of legend items
 - `{{LAYOUT_JSON}}` — JSON object mapping module IDs to `{x, y}` user-arranged positions (loaded from `.archmap/layout.json` at generation time; `{}` when absent)
+- `{{HISTORY_JSON}}` — JSON array of prior-version snapshots. Seeded with one initial entry by `/archmap`; appended by `/archmap:snapshot` and by the auto-snapshot hooks in `/archmap:repair` and `/archmap:focus`
 
 ## Map State Extraction
 
