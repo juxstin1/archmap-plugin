@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/juxstin1/archmap-plugin/main/schemas/plugin.schema.json",
+  "title": "Claude Code plugin manifest",
+  "description": "Schema for .claude-plugin/plugin.json. Catches common authoring mistakes like declaring default paths (which get loaded automatically and cause 'duplicate hooks' errors when also named in the manifest).",
+  "type": "object",
+  "required": ["name"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Kebab-case plugin name (a-z, 0-9, hyphens). This is what users type as `/plugin install <name>@<marketplace>`."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[A-Za-z0-9.-]+)?(\\+[A-Za-z0-9.-]+)?$",
+      "description": "Semantic version (MAJOR.MINOR.PATCH with optional prerelease/build metadata)."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "author": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": { "type": "string" },
+            "email": { "type": "string", "format": "email" },
+            "url": { "type": "string", "format": "uri" }
+          },
+          "required": ["name"]
+        }
+      ]
+    },
+    "license": {
+      "type": "string",
+      "description": "SPDX license identifier (e.g., MIT, Apache-2.0)."
+    },
+    "homepage": { "type": "string", "format": "uri" },
+    "repository": {
+      "oneOf": [
+        { "type": "string", "format": "uri" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string" },
+            "url":  { "type": "string", "format": "uri" }
+          }
+        }
+      ]
+    },
+    "bugs": {
+      "oneOf": [
+        { "type": "string", "format": "uri" },
+        {
+          "type": "object",
+          "properties": {
+            "url":   { "type": "string", "format": "uri" },
+            "email": { "type": "string", "format": "email" }
+          }
+        }
+      ]
+    },
+    "keywords": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1, "maxLength": 40 },
+      "uniqueItems": true,
+      "maxItems": 20
+    },
+    "commands": {
+      "type": "string",
+      "description": "Custom path to the commands directory. OMIT unless your commands live somewhere other than ./commands/. Declaring the default path registers commands twice and will fail to load."
+    },
+    "agents": {
+      "type": "string",
+      "description": "Custom path to the agents directory. OMIT unless your agents live somewhere other than ./agents/."
+    },
+    "skills": {
+      "type": "string",
+      "description": "Custom path to the skills directory. OMIT unless your skills live somewhere other than ./skills/."
+    },
+    "hooks": {
+      "type": "string",
+      "not": {
+        "pattern": "^\\.?/?hooks/hooks\\.json$"
+      },
+      "description": "Custom path to additional hook files. OMIT to use the default ./hooks/hooks.json, which Claude Code loads automatically. Declaring the default path results in a duplicate-hooks load error."
+    }
+  }
+}

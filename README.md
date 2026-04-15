@@ -95,6 +95,7 @@ Create `.archmap.json` in your project root (optional — every field has a sens
 
 ```json
 {
+  "$schema": "https://raw.githubusercontent.com/juxstin1/archmap-plugin/main/schemas/archmap.schema.json",
   "exclude": ["node_modules", "dist", ".git"],
   "tiers": { "src/api/": "api", "src/models/": "data" },
   "pinned": ["config-module"],
@@ -108,6 +109,8 @@ Create `.archmap.json` in your project root (optional — every field has a sens
   }
 }
 ```
+
+The `$schema` field is optional — adding it gives you **autocomplete, validation, and hover docs** in editors that support JSON Schema (VS Code, JetBrains IDEs, Helix, Zed).
 
 | Field | Type | Default | Purpose |
 |---|---|---|---|

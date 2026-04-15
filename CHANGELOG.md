@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New template placeholder `{{LAYOUT_JSON}}` — substituted by `/archmap` with the contents of `.archmap/layout.json` (or `{}` when absent).
 - `/archmap:repair` and `/archmap:focus` now preserve user-arranged positions. Repair flags any collision a new module would cause with a manually-placed one.
 - `.archmap.json` gains `layout.respectOverrides` and `layout.overridePath` fields.
+- **JSON Schema validation in CI** via `ajv-cli`. Three schemas ship under `schemas/`: `plugin.schema.json`, `marketplace.schema.json`, and `archmap.schema.json`. The plugin schema catches the class of bug that broke v1.0.0 (declaring a default path in `manifest.hooks`). Consumers can add `"$schema": "https://raw.githubusercontent.com/juxstin1/archmap-plugin/main/schemas/archmap.schema.json"` to their `.archmap.json` for editor autocomplete.
 
 ### Security
 - Hardened the HTML template against stored XSS. Every project-supplied string
