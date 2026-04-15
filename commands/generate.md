@@ -79,6 +79,20 @@ Keep the `positions` object in memory for Phase 3 substitution. If the file is a
 
 ### Phase 1: Explore the Codebase
 
+#### Phase 1.0 — Enumerate the filesystem (ONE call)
+
+Before any targeted reads, dump the full file inventory in a single bulk call:
+
+- Windows (`cmd`): `tree /F /A <path>`
+- PowerShell: `Get-ChildItem -Recurse -File -Name <path>`
+- POSIX: `find <path> -type f` (or `tree -F <path>` if installed)
+
+Filter the output in-memory against `.archmap.json` `exclude` patterns (and default exclusions: `node_modules`, `dist`, `.git`, `vendor`, `target`, `build`, `.next`, `.venv`, `__pycache__`). Do NOT repeat directory listing during Phase 1.1+ — everything you need to know about what exists is in this one dump.
+
+#### Phase 1.1 — Targeted reads
+
+From the filtered file list, select source files (by extension and path heuristic) and read them in parallel batches (10–20 at a time). For each file, extract: line count, types, public functions, internal imports, role/responsibility.
+
 Use the Task tool with `subagent_type: archmap:archmap-explorer` to **thoroughly** analyze the codebase. The agent must discover:
 
 1. **All source files** — file paths, approximate line counts

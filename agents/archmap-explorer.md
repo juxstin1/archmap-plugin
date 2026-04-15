@@ -11,6 +11,16 @@ Dedicated exploration agent for codebase architecture analysis. Spawned by the `
 
 ## Agent Prompt
 
+**Start with ONE bulk filesystem enumeration — not file-by-file discovery.** Before any reads, dump the full file inventory in a single call:
+
+- Windows (`cmd`): `tree /F /A <path>`
+- PowerShell: `Get-ChildItem -Recurse -File -Name <path>`
+- POSIX: `find <path> -type f` (or `tree -F <path>` if installed)
+
+Filter the output in-memory against any `.archmap.json` `exclude` patterns plus the defaults: `node_modules`, `dist`, `.git`, `vendor`, `target`, `build`, `.next`, `.venv`, `__pycache__`. This list is your complete file inventory — do NOT repeat directory listing during the read phase.
+
+Then, in parallel batches of 10–20, read the source files and extract their details.
+
 Thoroughly explore the codebase at the given path. For every source file, report:
 
 - File path and approximate line count

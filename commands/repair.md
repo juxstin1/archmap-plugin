@@ -78,7 +78,8 @@ This guarantees users can always roll back a bad repair by scrubbing to the pre-
 ### Phase 2: Targeted Re-exploration
 
 1. **Check** for `.archmap.json` in the project root — if present, load exclude paths and tier overrides
-2. **Dispatch** `archmap:archmap-repair-agent` in **scan mode** via the Task tool:
+2. **Enumerate the filesystem in ONE call** so new-file detection doesn't require exploratory directory-walking. Use `tree /F /A` / `Get-ChildItem -Recurse -File -Name` / `find -type f` depending on runtime. Filter the output in-memory against `.archmap.json` `exclude` (plus defaults: `node_modules`, `dist`, `.git`, `vendor`, `target`, `build`, `.next`, `.venv`, `__pycache__`). Pass this list to the scan agent so it can detect new modules without re-probing.
+3. **Dispatch** `archmap:archmap-repair-agent` in **scan mode** via the Task tool:
    ```
    subagent_type: archmap:archmap-repair-agent
    ```
@@ -86,7 +87,8 @@ This guarantees users can always roll back a bad repair by scrubbing to the pre-
    - The full list of current module objects (id, label, tier, file paths from details.imports context)
    - The project root path
    - The exclude paths from `.archmap.json` (if present)
-3. **Wait** for the repair report
+   - The filtered filesystem listing from step 2
+4. **Wait** for the repair report
 
 ### Phase 3: Analyze & Fix
 

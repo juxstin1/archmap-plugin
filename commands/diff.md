@@ -57,12 +57,13 @@ An existing `docs/architecture.html` must exist. If no map exists, tell the user
 ### Phase 2: Lightweight Re-exploration
 
 1. **Check** for `.archmap.json` — load exclude paths
-2. **Dispatch** `archmap:archmap-repair-agent` in **scan mode** via the Task tool:
+2. **Enumerate the filesystem in ONE call** so new-file detection doesn't require exploratory directory-walking. Use `tree /F /A` / `Get-ChildItem -Recurse -File -Name` / `find -type f` depending on runtime. Filter the output in-memory against `.archmap.json` `exclude` (plus defaults: `node_modules`, `dist`, `.git`, `vendor`, `target`, `build`, `.next`, `.venv`, `__pycache__`). Pass this list to the scan agent.
+3. **Dispatch** `archmap:archmap-repair-agent` in **scan mode** via the Task tool:
    ```
    subagent_type: archmap:archmap-repair-agent
    ```
-   Provide the agent with the full module list and project root
-3. **Wait** for the repair report (we use the repair report format but only for diffing, not fixing)
+   Provide the agent with the full module list, project root, and the filtered filesystem listing from step 2.
+4. **Wait** for the repair report (we use the repair report format but only for diffing, not fixing)
 
 ### Phase 3: Generate Diff
 
