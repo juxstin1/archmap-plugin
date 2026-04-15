@@ -15,6 +15,17 @@ Compare the current state of the codebase against the existing architecture map 
 /archmap:diff --output docs/     # Write detailed diff to docs/architecture-diff.md
 ```
 
+## Runtime adapter
+
+This command was originally written for Claude Code. The phases below are runtime-agnostic when the agent follows this rule — Claude Code, Codex (via `~/.codex/skills/`), and any other markdown-skill-aware runtime then execute identically.
+
+**Agent dispatch.** Wherever a phase says *"Dispatch `archmap:archmap-repair-agent` via the Task tool"*:
+
+  a. If your runtime has a `Task` tool with `subagent_type` support (Claude Code): dispatch as specified.
+  b. Otherwise (Codex, etc.): read the agent prompt from `agents/archmap-repair-agent.md` relative to this command file, and execute it inline in the current session with the inputs the phase would have passed.
+
+(`/archmap:diff` does not read the HTML template, so the template-path rule from sibling commands doesn't apply here.)
+
 ## Prerequisites
 
 An existing `docs/architecture.html` must exist. If no map exists, tell the user there's nothing to diff against — suggest `/archmap:generate` first.

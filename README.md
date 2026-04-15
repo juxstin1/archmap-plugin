@@ -43,9 +43,24 @@ claude --plugin-dir "$(pwd)"
 
 ### Requirements
 
-- Claude Code
+- Claude Code (primary target) — or any markdown-skill-aware runtime (see Runtime support below)
 - `bash` (git-bash or WSL on Windows)
 - `jq` recommended for full `.archmap.json` parsing; hooks fall back gracefully without it
+
+### Runtime support
+
+Archmap was designed as a Claude Code plugin, but every `commands/*.md` file opens with a **Runtime adapter** section that keeps behavior identical under other markdown-skill-aware runtimes.
+
+| Runtime | `archmap:*` commands | `architecture` skill | Hooks |
+|---|---|---|---|
+| **Claude Code** | Native (`/archmap:<cmd>`) | Native auto-activation | SessionStart + PostToolUse |
+| **OpenAI Codex CLI** | `~/.codex/skills/archmap-<cmd>/SKILL.md` → invoke as `$archmap-<cmd>` | `~/.codex/skills/archmap/SKILL.md` | Not portable (different hook format) |
+| **Other skill-aware runtimes** | Follow the Runtime adapter rules in each command file | SKILL.md is standard markdown | — |
+
+**What the Runtime adapter handles:**
+
+1. **Template path** — resolves `archmap-template.html` via `${ARCHMAP_TEMPLATE_PATH}` → skill-adjacent `../templates/` → `${CLAUDE_PLUGIN_ROOT}/templates/`, in that order.
+2. **Agent dispatch** — if the runtime has a `Task` tool with `subagent_type` support, subagents spawn as `archmap:archmap-explorer` / `archmap:archmap-repair-agent`. Otherwise the command reads `agents/*.md` directly and executes the prompt inline.
 
 ## Quickstart
 

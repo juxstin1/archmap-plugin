@@ -15,6 +15,21 @@ Generate an interactive 2D web visualization of any codebase's architecture with
 /archmap:generate --refresh    # Regenerate map for current project (re-explore)
 ```
 
+## Runtime adapter
+
+This command was originally written for Claude Code. The phases below are runtime-agnostic when the agent follows these two rules — Claude Code, Codex (via `~/.codex/skills/`), and any other markdown-skill-aware runtime then execute identically.
+
+**1. Template path resolution.** Wherever a phase says *"read the template"* or references `${CLAUDE_PLUGIN_ROOT}/templates/archmap-template.html`, resolve the template in this order and use the first hit:
+
+  a. `${ARCHMAP_TEMPLATE_PATH}` — user override
+  b. `<skill-root>/../templates/archmap-template.html` — adjacent to this command file, works when installed as a plain markdown skill under any runtime
+  c. `${CLAUDE_PLUGIN_ROOT}/templates/archmap-template.html` — Claude Code fallback (the `${CLAUDE_PLUGIN_ROOT}` env var is set only by Claude Code's plugin loader)
+
+**2. Agent dispatch.** Wherever a phase says *"Dispatch `archmap:archmap-explorer` (or `archmap-repair-agent`) via the Task tool"*:
+
+  a. If your runtime has a `Task` tool with `subagent_type` support (Claude Code): dispatch as specified.
+  b. Otherwise (Codex, etc.): read the agent prompt from `agents/archmap-explorer.md` or `agents/archmap-repair-agent.md` relative to this command file, and execute it inline in the current session with the inputs the phase would have passed.
+
 ## Behavior
 
 When user runs `/archmap:generate`:
