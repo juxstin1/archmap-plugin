@@ -81,13 +81,15 @@ Keep the `positions` object in memory for Phase 3 substitution. If the file is a
 
 #### Phase 1.0 — Enumerate the filesystem (ONE call)
 
-Before any targeted reads, dump the full file inventory in a single bulk call:
+Before any targeted reads, dump the full file inventory in a single bulk call. **Push exclusions into the enumeration itself — don't dump everything and filter after.** Unfiltered output from a repo with untouched `node_modules` or `.git` can blow the context window.
 
-- Windows (`cmd`): `tree /F /A <path>`
-- PowerShell: `Get-ChildItem -Recurse -File -Name <path>`
-- POSIX: `find <path> -type f` (or `tree -F <path>` if installed)
+Compose the exclusion list first: start with the defaults (`node_modules`, `dist`, `.git`, `vendor`, `target`, `build`, `.next`, `.venv`, `__pycache__`), then union with `.archmap.json` `exclude`. Use that list in the enumeration command:
 
-Filter the output in-memory against `.archmap.json` `exclude` patterns (and default exclusions: `node_modules`, `dist`, `.git`, `vendor`, `target`, `build`, `.next`, `.venv`, `__pycache__`). Do NOT repeat directory listing during Phase 1.1+ — everything you need to know about what exists is in this one dump.
+- POSIX: `find <path> \( -path '*/node_modules' -o -path '*/.git' -o -path '*/dist' -o … \) -prune -o -type f -print` (one `-path` clause per excluded directory, all before the `-prune`)
+- PowerShell: `Get-ChildItem -Recurse -File -Name <path> -Exclude node_modules,dist,.git,vendor,target,build,.next,.venv,__pycache__` (note: `-Exclude` matches the leaf name, which handles nested `node_modules/` the way you want in practice)
+- Windows `cmd` (human-readable fallback): `tree /F /A <path>` — use only when you need the ASCII tree view for yourself. For machine-parseable output, prefer the POSIX/PowerShell forms above.
+
+If the enumeration still returns more than ~5000 entries (rare but possible on monorepos), fall back to a per-top-level-directory pass: enumerate each top-level source dir separately and combine in memory. Do NOT repeat directory listing during Phase 1.1+ — everything you need to know about what exists is in this one dump.
 
 #### Phase 1.1 — Targeted reads
 
