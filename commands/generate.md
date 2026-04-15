@@ -30,6 +30,21 @@ This command was originally written for Claude Code. The phases below are runtim
   a. If your runtime has a `Task` tool with `subagent_type` support (Claude Code): dispatch as specified.
   b. Otherwise (Codex, etc.): read the agent prompt file and execute it inline in the current session with the inputs the phase would have passed. Resolve the agent prompt path in this order, first hit wins: `${ARCHMAP_ROOT}/agents/archmap-explorer.md` (or `archmap-repair-agent.md`) → `${CLAUDE_PLUGIN_ROOT}/agents/<name>.md`.
 
+## Execution directives
+
+These rules apply to all phases below. They exist so the agent spends model cycles on judgment, not on re-deriving how to enumerate a filesystem or parse this template.
+
+1. **Existence checks: batch all artifact paths into ONE `Test-Path`/`test` call.** Never use `Get-ChildItem docs` or `ls docs` to check if a file exists — those error loudly on missing directories and waste a round-trip on follow-up probes.
+
+   - Windows: `Test-Path docs/architecture-map.md, docs/architecture.html, .archmap.json, .archmap/layout.json`
+   - POSIX: `for f in docs/architecture-map.md docs/architecture.html .archmap.json .archmap/layout.json; do [ -e "$f" ] && echo "$f"; done`
+
+2. **HTML map extraction: read `docs/architecture.html` ONCE, in full, then extract all `const` arrays in-memory via regex.** Do not run `Select-String` (or `grep`) once per variable. One full read + one regex pass is correct; seven sequential greps of the same file are not. Variables to extract in a single pass: `const modules`, `const edges`, `const tierLabels`, `const pipelineSteps`, `const legendItems`, `const layoutOverrides`, `const history`.
+
+3. **Independent reads run in parallel.** When a phase lists reads that do not depend on each other (e.g., loading `.archmap.json` and `.archmap/layout.json`), issue them as concurrent tool calls.
+
+4. **Probe once per phase.** If the `Test-Path` batch in rule 1 already told you a file exists, don't re-check later.
+
 ## Behavior
 
 When user runs `/archmap:generate`:
