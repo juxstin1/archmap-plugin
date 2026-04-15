@@ -22,7 +22,7 @@ This command was originally written for Claude Code. The phases below are runtim
 **Agent dispatch.** Wherever a phase says *"Dispatch `archmap:archmap-repair-agent` via the Task tool"*:
 
   a. If your runtime has a `Task` tool with `subagent_type` support (Claude Code): dispatch as specified.
-  b. Otherwise (Codex, etc.): read the agent prompt from `agents/archmap-repair-agent.md` relative to this command file, and execute it inline in the current session with the inputs the phase would have passed.
+  b. Otherwise (Codex, etc.): read the agent prompt file and execute it inline in the current session with the inputs the phase would have passed. Resolve the agent prompt path in this order, first hit wins: `${ARCHMAP_ROOT}/agents/archmap-repair-agent.md` → `${CLAUDE_PLUGIN_ROOT}/agents/archmap-repair-agent.md`. (`${ARCHMAP_ROOT}` should be set once, at install time, to the plugin's install directory; Claude Code sets `${CLAUDE_PLUGIN_ROOT}` automatically.)
 
 (`/archmap:diff` does not read the HTML template, so the template-path rule from sibling commands doesn't apply here.)
 

@@ -22,8 +22,8 @@ This command was originally written for Claude Code. The phases below are runtim
 
 **Template path resolution.** Wherever a phase says *"read the template"* or references `${CLAUDE_PLUGIN_ROOT}/templates/archmap-template.html`, resolve the template in this order and use the first hit:
 
-  a. `${ARCHMAP_TEMPLATE_PATH}` — user override
-  b. `<skill-root>/../templates/archmap-template.html` — adjacent to this command file, works when installed as a plain markdown skill under any runtime
+  a. `${ARCHMAP_TEMPLATE_PATH}` — direct path override
+  b. `${ARCHMAP_ROOT}/templates/archmap-template.html` — plugin-root override (recommended for non-Claude-Code runtimes; set `${ARCHMAP_ROOT}` once to the directory containing this plugin's `templates/`, `agents/`, `commands/`)
   c. `${CLAUDE_PLUGIN_ROOT}/templates/archmap-template.html` — Claude Code fallback (the `${CLAUDE_PLUGIN_ROOT}` env var is set only by Claude Code's plugin loader)
 
 (`/archmap:snapshot` does not dispatch a subagent, so the agent-dispatch rule from sibling commands doesn't apply here.)
