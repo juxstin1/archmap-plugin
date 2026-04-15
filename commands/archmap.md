@@ -24,6 +24,7 @@ When user runs `/archmap`:
 Before exploring, check for `.archmap.json` in the project root (or target path root). If present, load:
 
 - **`exclude`** — array of paths/patterns to skip during exploration (e.g., `["node_modules", "dist", ".git", "vendor"]`)
+- **`layout`** — object; `{"respectOverrides": true}` (default) means generation reads `.archmap/layout.json` (or the path in `layout.overridePath`) and preserves user-arranged positions.
 - **`tiers`** — object mapping path prefixes to tier assignments (e.g., `{"src/api/": "api", "src/models/": "data"}`)
 - **`pinned`** — array of module IDs that should never be removed or re-tiered
 - **`output.html`** — custom output path for HTML (default: `docs/architecture.html`)
@@ -31,6 +32,20 @@ Before exploring, check for `.archmap.json` in the project root (or target path 
 - **`theme`** — default theme to apply (default: `dark`)
 
 If no `.archmap.json` exists, use defaults. Pass exclude paths and tier overrides to the explorer agent.
+
+Also load **`.archmap/layout.json`** if present (or the path in `.archmap.json` `layout.overridePath`). Expected shape:
+
+```json
+{
+  "version": 1,
+  "positions": {
+    "module-id-1": { "x": 340, "y": 160 },
+    "module-id-2": { "x": 520, "y": 240 }
+  }
+}
+```
+
+Keep the `positions` object in memory for Phase 3 substitution. If the file is absent or malformed, treat as `{}` and continue. Positions in this file are user-arranged via the interactive Edit mode in the HTML UI; preserving them across regeneration is the whole point of the file existing.
 
 ### Phase 1: Explore the Codebase
 
@@ -148,6 +163,7 @@ From the exploration results, build the visualization data structures. Each modu
    - `{{TIER_LABELS_JSON}}` → `safeJson(tierLabels)` — tier label positions
    - `{{PIPELINE_JSON}}` → `safeJson(pipelineSteps)` — pipeline steps
    - `{{LEGEND_JSON}}` → `safeJson(legendItems)` — legend items
+   - `{{LAYOUT_JSON}}` → `safeJson(layoutData.positions || {})` — user-arranged position overrides loaded from `.archmap/layout.json` in Phase 0, or `{}` if absent
 
    Never interpolate raw project-data strings directly into JS source. The template reads the project name from the `<body data-project-name="...">` attribute at runtime, so there is no need to embed it as a JS string literal.
 3. **Write** the result to `docs/architecture.html` in the project root (create `docs/` if needed). Write atomically: write to `docs/architecture.html.tmp` then rename, so a concurrent reader never sees a half-written file.

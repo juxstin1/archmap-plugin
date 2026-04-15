@@ -74,7 +74,7 @@ jobs:
 
       - name: Template placeholders are present
         run: |
-          required="{{PROJECT_NAME}} {{STATS_HTML}} {{MODULES_JSON}} {{EDGES_JSON}} {{TIER_LABELS_JSON}} {{PIPELINE_JSON}} {{LEGEND_JSON}}"
+          required="{{PROJECT_NAME}} {{STATS_HTML}} {{MODULES_JSON}} {{EDGES_JSON}} {{TIER_LABELS_JSON}} {{PIPELINE_JSON}} {{LEGEND_JSON}} {{LAYOUT_JSON}}"
           for p in $required; do
             if ! grep -qF "$p" templates/archmap-template.html; then
               echo "::error file=templates/archmap-template.html::missing placeholder $p"

@@ -118,18 +118,31 @@ Create `.archmap.json` in your project root (optional — every field has a sens
 | `output.markdown` | `string` | `docs/architecture-map.md` | Custom markdown output path. |
 | `theme` | `string` | `dark` | Default theme. One of: `dark`, `light`, `claude`, `openai`. |
 | `hooks.sessionStart` | `boolean` | `true` | Set to `false` to silence the session-start staleness nudge. |
+| `layout.respectOverrides` | `boolean` | `true` | When `true`, generation reads `.archmap/layout.json` and preserves your manually-arranged module positions. |
+| `layout.overridePath` | `string` | `.archmap/layout.json` | Path the generator reads for user-arranged positions. Produced by the Edit mode's "Save → Download layout.json" button in the HTML UI. |
 
 **Available tier keys:** `entry`, `frontend`, `ir`, `codegen`, `runtime`, `lint`, `driver`, `data`, `api`, `ui`, `infra`, `util`, `test`, `config`.
+
+### Arranging the map manually
+
+The HTML canvas has an **Edit** button (shortcut: `E`) that lets you drag modules to reposition them. Positions are auto-saved to your browser's localStorage per project. To share your layout with teammates or bake it permanently:
+
+1. Click **Edit** → rearrange modules → click **Save** when the button appears
+2. Pick **Download `layout.json`** in the modal → commit the file to `.archmap/layout.json` in your project root
+3. Next time anyone runs `/archmap` or `/archmap:repair`, the generator respects your positions
+
+Drags snap to a 10 px grid. Hold `Shift` while dragging to bypass the snap for fine-tuning. The **Reset Layout** button restores the generator's default positions.
 
 ## Visualization features
 
 - Pan, zoom, click-to-inspect module nodes
+- **Drag-to-reposition** in Edit mode, with localStorage persistence + shareable `layout.json`
 - Dependency edge graph with curved Bezier arrows
 - Sidebar inspector with types, functions, imports, notes
 - Data flow pipeline visualization
 - Complexity bar per module (based on line count)
 - 4 theme presets: Dark, Light, Claude, OpenAI
-- Markdown export from the UI (Export MD button)
+- **One-click Export** — PNG of the full graph + markdown referencing it, ready to paste anywhere
 
 ## Repository layout
 
