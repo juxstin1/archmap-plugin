@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Version history — Phase 1 (data layer).** Every map now carries a `history[]` array of prior snapshots. Use `/archmap:snapshot [--name <label>] [--note "..."]` to save one explicitly. `/archmap:repair` and `/archmap:focus` auto-snapshot before mutating so you can always roll back (opt-out via `.archmap.json` `history.autoSnapshotOnRepair/Focus: false`). `/archmap` on a fresh repo seeds `history` with an initial `v0.1` entry. Snapshots spill to `.archmap/snapshots/*.json` once inline count exceeds `history.maxInlineSnapshots` (default 50) to keep the HTML sane on long-lived repos. Phase 2 (timeline scrubber + diff mode UI) and Phase 3 (`/archmap:at <ref>` + `/archmap:compare`) are queued as separate PRs per the #4 roadmap.
+- New template placeholder `{{HISTORY_JSON}}` — substituted by `/archmap` with the history array. Default shape when absent: `[]`.
+- `.archmap.json` gains a full `history.*` subtree (`enabled`, `autoSnapshotOnRepair`, `autoSnapshotOnFocus`, `maxInlineSnapshots`, `spillPath`).
 - **Drag-to-reposition module layout.** New **Edit** button in the control bar (keyboard shortcut `E`) puts the canvas into edit mode, where modules can be dragged to new positions. Drags snap to a 10-px grid; hold Shift to bypass. Positions auto-save to localStorage per project, and a **Save Layout** modal exports a `.archmap/layout.json` file that can be committed so teammates (and re-runs of `/archmap`) respect the manual arrangement. A **Reset Layout** button restores generator defaults.
 - New template placeholder `{{LAYOUT_JSON}}` — substituted by `/archmap` with the contents of `.archmap/layout.json` (or `{}` when absent).
 - `/archmap:repair` and `/archmap:focus` now preserve user-arranged positions. Repair flags any collision a new module would cause with a manually-placed one.

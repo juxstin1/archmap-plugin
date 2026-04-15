@@ -77,6 +77,38 @@
           "description": "Path to the layout-override file produced by the HTML UI's Save button."
         }
       }
+    },
+    "history": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Master switch for the version-history feature. When false, /archmap:snapshot errors out and the HTML ships with an empty history array."
+        },
+        "autoSnapshotOnRepair": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true (default), /archmap:repair runs /archmap:snapshot before mutating. Set false to require manual snapshots only."
+        },
+        "autoSnapshotOnFocus": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true (default), /archmap:focus runs /archmap:snapshot before mutating. Set false to require manual snapshots only."
+        },
+        "maxInlineSnapshots": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Number of most-recent snapshots to keep inline in the HTML. Older snapshots spill to sibling JSON files."
+        },
+        "spillPath": {
+          "type": "string",
+          "default": ".archmap/snapshots",
+          "description": "Directory for overflow snapshots when maxInlineSnapshots is exceeded. Loaded on demand via fetch() by the Phase 2 timeline UI."
+        }
+      }
     }
   }
 }
