@@ -133,15 +133,24 @@ From the exploration results, build the visualization data structures. Each modu
 ### Phase 3: Generate the HTML
 
 1. **Read the template** from `${CLAUDE_PLUGIN_ROOT}/templates/archmap-template.html`
-2. **Replace the placeholders** with the actual data:
-   - `{{PROJECT_NAME}}` → project name (e.g., "Annie", "My App")
-   - `{{STATS_HTML}}` → stats divs like: `<div><span class="stat-val">~8,700</span> lines</div><div><span class="stat-val">23</span> files</div>`
-   - `{{MODULES_JSON}}` → the modules array as JSON
-   - `{{EDGES_JSON}}` → the edges array as JSON
-   - `{{TIER_LABELS_JSON}}` → tier label positions as JSON
-   - `{{PIPELINE_JSON}}` → pipeline steps as JSON
-   - `{{LEGEND_JSON}}` → legend items as JSON
-3. **Write** the result to `docs/architecture.html` in the project root (create `docs/` if needed)
+2. **Replace the placeholders** with the actual data. Substitution is strict find-and-replace, so each placeholder value MUST be pre-escaped for its context before the swap:
+
+   **HTML-context placeholders** — HTML-escape `& < > " '` before substitution:
+   - `{{PROJECT_NAME}}` → project name (e.g., `"Annie"`, `"My App"`). Used in `<title>`, `<h1>`, and a `data-project-name` attribute on `<body>`. HTML-escape only — do NOT wrap in quotes.
+   - `{{STATS_HTML}}` → stats divs like `<div><span class="stat-val">~8,700</span> lines</div><div><span class="stat-val">23</span> files</div>`. This is raw HTML by design; escape the *values* inside (line counts, file counts) before composing the HTML.
+
+   **JS-context placeholders** — produce valid JSON via `JSON.stringify(...)`. `JSON.stringify` handles embedded quotes, newlines, and unicode. Additionally, any string that could contain `</` (script closer) must be JSON-encoded with `</` escaped as `<\/` to avoid prematurely closing the enclosing `<script>` tag. Example replacement helper:
+   ```
+   const safeJson = obj => JSON.stringify(obj).replace(/<\/(script)/gi, '<\\/$1');
+   ```
+   - `{{MODULES_JSON}}` → `safeJson(modules)` — modules array
+   - `{{EDGES_JSON}}` → `safeJson(edges)` — edges array
+   - `{{TIER_LABELS_JSON}}` → `safeJson(tierLabels)` — tier label positions
+   - `{{PIPELINE_JSON}}` → `safeJson(pipelineSteps)` — pipeline steps
+   - `{{LEGEND_JSON}}` → `safeJson(legendItems)` — legend items
+
+   Never interpolate raw project-data strings directly into JS source. The template reads the project name from the `<body data-project-name="...">` attribute at runtime, so there is no need to embed it as a JS string literal.
+3. **Write** the result to `docs/architecture.html` in the project root (create `docs/` if needed). Write atomically: write to `docs/architecture.html.tmp` then rename, so a concurrent reader never sees a half-written file.
 4. **Open** in browser: `start "" "docs/architecture.html"` (Windows) or `open docs/architecture.html` (Mac) or `xdg-open docs/architecture.html` (Linux)
 
 ### Phase 3.5: Generate Markdown Export
