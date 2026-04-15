@@ -11,7 +11,7 @@ Archmap is a Claude Code plugin — an interactive codebase architecture platfor
 This is a Claude Code plugin, not a typical application. No build system, no tests, no package.json. The "code" is markdown prompts, JSON configs, bash scripts, and one HTML template.
 
 ```
-.claude-plugin/plugin.json        ← Plugin manifest (name, version, component paths, hooks ref)
+.claude-plugin/plugin.json        ← Plugin manifest (name, version, author, repo/homepage metadata)
 commands/
   archmap.md                      ← /archmap — generate full architecture map
   archmap-repair.md               ← /archmap:repair — detect and fix map issues
