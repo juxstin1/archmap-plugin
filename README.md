@@ -162,10 +162,11 @@ archmap-plugin/
 |  |- plugin.json
 |  `- marketplace.json
 |- commands/
-|  |- archmap.md
-|  |- archmap-repair.md
-|  |- archmap-focus.md
-|  `- archmap-diff.md
+|  |- generate.md
+|  |- repair.md
+|  |- focus.md
+|  |- diff.md
+|  `- snapshot.md
 |- agents/
 |  |- archmap-explorer.md
 |  `- archmap-repair-agent.md
