@@ -16,6 +16,18 @@ Capture the current map state as a named snapshot in the map's `history[]` array
 /archmap:snapshot --name v1.0 --note "public release"
 ```
 
+## Runtime adapter
+
+This command was originally written for Claude Code. The phases below are runtime-agnostic when the agent follows this rule — Claude Code, Codex (via `~/.codex/skills/`), and any other markdown-skill-aware runtime then execute identically.
+
+**Template path resolution.** Wherever a phase says *"read the template"* or references `${CLAUDE_PLUGIN_ROOT}/templates/archmap-template.html`, resolve the template in this order and use the first hit:
+
+  a. `${ARCHMAP_TEMPLATE_PATH}` — direct path override
+  b. `${ARCHMAP_ROOT}/templates/archmap-template.html` — plugin-root override (recommended for non-Claude-Code runtimes; set `${ARCHMAP_ROOT}` once to the directory containing this plugin's `templates/`, `agents/`, `commands/`)
+  c. `${CLAUDE_PLUGIN_ROOT}/templates/archmap-template.html` — Claude Code fallback (the `${CLAUDE_PLUGIN_ROOT}` env var is set only by Claude Code's plugin loader)
+
+(`/archmap:snapshot` does not dispatch a subagent, so the agent-dispatch rule from sibling commands doesn't apply here.)
+
 ## Behavior
 
 ### Phase 1: Load current map

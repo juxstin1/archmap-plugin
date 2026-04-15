@@ -43,9 +43,49 @@ claude --plugin-dir "$(pwd)"
 
 ### Requirements
 
-- Claude Code
+- Claude Code (primary target) — or any markdown-skill-aware runtime (see Runtime support below)
 - `bash` (git-bash or WSL on Windows)
 - `jq` recommended for full `.archmap.json` parsing; hooks fall back gracefully without it
+
+### Runtime support
+
+Archmap was designed as a Claude Code plugin, but every `commands/*.md` file opens with a **Runtime adapter** section that keeps behavior identical under other markdown-skill-aware runtimes.
+
+| Runtime | `archmap:*` commands | `architecture` skill | Hooks |
+|---|---|---|---|
+| **Claude Code** | Native (`/archmap:<cmd>`) | Native auto-activation | SessionStart + PostToolUse |
+| **OpenAI Codex CLI** | `~/.codex/skills/archmap-<cmd>/SKILL.md` → invoke as `$archmap-<cmd>` | `~/.codex/skills/archmap/SKILL.md` | Not portable (different hook format) |
+| **Other skill-aware runtimes** | Follow the Runtime adapter rules in each command file | SKILL.md is standard markdown | — |
+
+**What the Runtime adapter handles:**
+
+1. **Template path** — resolves `archmap-template.html` via `${ARCHMAP_TEMPLATE_PATH}` → `${ARCHMAP_ROOT}/templates/archmap-template.html` → `${CLAUDE_PLUGIN_ROOT}/templates/archmap-template.html`, first hit wins.
+2. **Agent prompts** — resolves `agents/<name>.md` via `${ARCHMAP_ROOT}/agents/` → `${CLAUDE_PLUGIN_ROOT}/agents/`, first hit wins. Used only when the runtime has no `Task` subagent (see rule 3).
+3. **Agent dispatch** — if the runtime has a `Task` tool with `subagent_type` support (Claude Code), subagents spawn as `archmap:archmap-explorer` / `archmap:archmap-repair-agent`. Otherwise the command reads the agent prompt (via rule 2) and executes it inline in the current session.
+
+`${ARCHMAP_ROOT}` points at the plugin's installation directory (where `templates/`, `agents/`, and `commands/` all live). Claude Code users don't need it — the loader sets `${CLAUDE_PLUGIN_ROOT}` automatically. Other runtimes set `${ARCHMAP_ROOT}` once, at install time.
+
+**Codex install (recommended flow):**
+
+```bash
+# 1. Clone the plugin once, to a stable location
+git clone https://github.com/juxstin1/archmap-plugin.git ~/.archmap-plugin
+
+# 2. Tell the adapter where the plugin lives (add to your shell rc file to make it persistent)
+export ARCHMAP_ROOT="$HOME/.archmap-plugin"
+
+# 3. Symlink each command file into ~/.codex/skills/
+for cmd in generate diff focus repair snapshot; do
+  mkdir -p "$HOME/.codex/skills/archmap-$cmd"
+  ln -sf "$ARCHMAP_ROOT/commands/$cmd.md" "$HOME/.codex/skills/archmap-$cmd/SKILL.md"
+done
+
+# 4. Symlink the architecture skill
+mkdir -p "$HOME/.codex/skills/archmap"
+ln -sf "$ARCHMAP_ROOT/skills/architecture/SKILL.md" "$HOME/.codex/skills/archmap/SKILL.md"
+```
+
+With `${ARCHMAP_ROOT}` exported, both the template (rule 1) and the agent prompts (rule 2) resolve correctly regardless of where the individual SKILL.md files end up. Symlinks keep the Codex install in sync with `git pull` in the plugin directory.
 
 ## Quickstart
 
