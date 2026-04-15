@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions & discussion
+    url: https://github.com/juxstin1/archmap-plugin/discussions
+    about: Ask a question, share a map, or discuss ideas
+  - name: Security vulnerabilities
+    url: https://github.com/juxstin1/archmap-plugin/security/advisories/new
+    about: Report privately — do not use public issues for security bugs

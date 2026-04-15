@@ -1,13 +1,34 @@
 {
-  "name": "juxstin1-archmap-plugin",
+  "name": "archmap",
   "owner": {
-    "name": "Justin"
+    "name": "Justin",
+    "url": "https://github.com/juxstin1"
+  },
+  "metadata": {
+    "description": "Interactive codebase architecture maps for Claude Code — generate, repair, focus, and diff with zero runtime dependencies."
   },
   "plugins": [
     {
       "name": "archmap",
       "source": "./",
-      "description": "Interactive codebase architecture platform — generate, repair, focus, and diff architecture maps with canvas visualization, contextual intelligence, and live staleness detection"
+      "version": "1.0.0",
+      "description": "Interactive codebase architecture platform — generate, repair, focus, and diff architecture maps with canvas visualization, contextual intelligence, and live staleness detection",
+      "author": {
+        "name": "Justin",
+        "url": "https://github.com/juxstin1"
+      },
+      "homepage": "https://github.com/juxstin1/archmap-plugin",
+      "repository": "https://github.com/juxstin1/archmap-plugin",
+      "license": "MIT",
+      "keywords": [
+        "architecture",
+        "visualization",
+        "codebase",
+        "dependencies",
+        "canvas",
+        "documentation",
+        "diagram"
+      ]
     }
   ]
 }

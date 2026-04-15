@@ -2,13 +2,22 @@
   "name": "archmap",
   "version": "1.0.0",
   "description": "Interactive codebase architecture platform — generate, repair, focus, and diff architecture maps with canvas visualization, contextual intelligence, and live staleness detection",
-  "commands": "./commands/",
-  "agents": "./agents/",
-  "skills": "./skills/",
   "hooks": "./hooks/hooks.json",
   "author": {
-    "name": "Justin"
+    "name": "Justin",
+    "url": "https://github.com/juxstin1"
   },
+  "homepage": "https://github.com/juxstin1/archmap-plugin",
+  "repository": "https://github.com/juxstin1/archmap-plugin",
+  "bugs": "https://github.com/juxstin1/archmap-plugin/issues",
   "license": "MIT",
-  "keywords": ["architecture", "visualization", "codebase", "dependencies", "canvas"]
+  "keywords": [
+    "architecture",
+    "visualization",
+    "codebase",
+    "dependencies",
+    "canvas",
+    "documentation",
+    "diagram"
+  ]
 }

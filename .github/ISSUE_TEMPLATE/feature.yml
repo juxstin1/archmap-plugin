@@ -1,0 +1,47 @@
+name: Feature request
+description: Suggest an enhancement, new command, or theme
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the use case or pain point. "I'm always trying to X but …"
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Sketch the command, behavior, or API you have in mind. Rough is fine.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - New slash command
+        - New agent capability
+        - New theme
+        - Template / visualization
+        - .archmap.json config
+        - Hooks
+        - Docs / examples
+        - Tooling / CI
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
