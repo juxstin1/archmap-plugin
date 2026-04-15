@@ -165,7 +165,7 @@
   <button onclick="resetView()">Reset View</button>
   <button onclick="toggleEdgeMode()">Toggle Edges</button>
   <button onclick="toggleLabels()">Toggle Labels</button>
-  <button onclick="exportMarkdown()">Export MD</button>
+  <button id="export-btn" onclick="exportAll()" title="Downloads a PNG of the map + a markdown file referencing it. Drop both in your docs/ folder for a shareable pair.">Export</button>
 </div>
 
 <script>
@@ -589,7 +589,10 @@ function resetView() { viewX = 30; viewY = 30; viewScale = 1; selectedModule = n
 function toggleEdgeMode() { showEdgeLabels = !showEdgeLabels; draw(); }
 function toggleLabels() { showAllLabels = !showAllLabels; draw(); }
 
-function exportMarkdown() {
+// Builds the markdown export as a string. When `imagePath` is supplied,
+// embeds it at the top so a sibling `<imagePath>` file renders inline
+// when the markdown is viewed on GitHub, Notion, Slack, etc.
+function buildMarkdown(imagePath) {
   // Read project name from the data attribute rather than embedding
   // it as a JS string literal — avoids injection via quotes/newlines
   // in the project name itself.
@@ -599,6 +602,10 @@ function exportMarkdown() {
   const totalLayers = [...new Set(modules.map(m => m.tier))].length;
 
   let md = `# ${projectName} — Architecture Map\n\n`;
+  if (imagePath) {
+    md += `![${projectName} architecture](${imagePath})\n\n`;
+    md += `_Interactive version: \`docs/architecture.html\`_\n\n`;
+  }
   md += `**Generated:** ${new Date().toISOString().split('T')[0]}\n\n`;
 
   // Stats
@@ -726,16 +733,141 @@ function exportMarkdown() {
     md += `- **${from.label}** → **${to.label}** (${e.label})\n`;
   });
 
-  // Download
-  const blob = new Blob([md], { type: 'text/markdown' });
+  return md;
+}
+
+// ── Export helpers ────────────────────────────────────────
+
+function slug(s) {
+  return String(s || 'archmap')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60) || 'archmap';
+}
+
+function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'architecture-map.md';
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // Revoke a moment later so the download actually initiates first.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// Compute the world-space bounding box of all modules + tier labels,
+// padded so the export doesn't crowd the edges.
+function computeExportBounds(pad) {
+  if (pad == null) pad = 40;
+  if (!modules.length) return { minX: 0, minY: 0, maxX: 800, maxY: 600 };
+  const xs = [], ys = [];
+  modules.forEach(m => { xs.push(m.x, m.x + m.w); ys.push(m.y, m.y + m.h); });
+  tierLabels.forEach(t => { xs.push(t.x); ys.push(t.y - 20); });
+  return {
+    minX: Math.min.apply(null, xs) - pad,
+    minY: Math.min.apply(null, ys) - pad,
+    maxX: Math.max.apply(null, xs) + pad,
+    maxY: Math.max.apply(null, ys) + pad,
+  };
+}
+
+// Render the full graph to an offscreen canvas and resolve to a PNG
+// Blob. Works by temporarily rebinding `ctx` so the existing draw
+// helpers (drawModule / drawEdge / drawTierLabels / roundRect) all
+// paint into the export canvas unchanged.
+function renderToPng(scale) {
+  if (scale == null) scale = 2;
+  const b = computeExportBounds(40);
+  const worldW = b.maxX - b.minX;
+  const worldH = b.maxY - b.minY;
+
+  // Clamp: keep the longest side under 4096 px so giant maps don't
+  // exceed browser canvas limits or take forever to encode.
+  let eff = scale;
+  const longest = Math.max(worldW, worldH) * eff;
+  if (longest > 4096) eff = eff * (4096 / longest);
+
+  const off = document.createElement('canvas');
+  off.width = Math.max(1, Math.round(worldW * eff));
+  off.height = Math.max(1, Math.round(worldH * eff));
+  const octx = off.getContext('2d');
+
+  // Opaque theme background — transparent PNGs look bad in most paste
+  // contexts (Slack, GitHub, Notion all render them on white).
+  octx.fillStyle = T.css['--bg'];
+  octx.fillRect(0, 0, off.width, off.height);
+
+  // Save + rebind rendering state for the export pass.
+  const originalCtx = ctx;
+  const originalHover = hoveredModule;
+  const originalSelected = selectedModule;
+  ctx = octx;
+  hoveredModule = null;   // export a "clean" view with no hover/select state
+  selectedModule = null;
+
+  octx.save();
+  octx.scale(eff, eff);
+  octx.translate(-b.minX, -b.minY);
+  // Skip drawGrid — it depends on the live viewport (screenToWorld)
+  // and the export gains nothing from an explicit grid.
+  drawTierLabels();
+  edges.forEach(e => drawEdge(e));
+  modules.forEach(m => drawModule(m));
+  octx.restore();
+
+  // Restore.
+  ctx = originalCtx;
+  hoveredModule = originalHover;
+  selectedModule = originalSelected;
+
+  return new Promise(res => off.toBlob(res, 'image/png'));
+}
+
+// Combined one-click export: PNG of the full graph + markdown that
+// references the PNG as its top-of-file image. Dropping both files
+// in the same directory gives a fully renderable artifact anywhere
+// that understands markdown + PNG (GitHub, Notion, Slack, email).
+async function exportAll() {
+  const btn = document.getElementById('export-btn');
+  const original = btn ? btn.textContent : null;
+  try {
+    if (btn) { btn.textContent = 'Exporting…'; btn.disabled = true; }
+
+    const rawName = document.body.dataset.projectName || 'architecture';
+    const s = slug(rawName);
+    const pngName = `${s}-architecture.png`;
+    const mdName = `${s}-architecture-map.md`;
+
+    const pngBlob = await renderToPng(2);
+    downloadBlob(pngBlob, pngName);
+
+    // Brief pause so browsers don't flag the pair as a rapid-multi-download.
+    await new Promise(r => setTimeout(r, 300));
+
+    const md = buildMarkdown('./' + pngName);
+    downloadBlob(new Blob([md], { type: 'text/markdown' }), mdName);
+
+    if (btn) {
+      btn.textContent = 'Exported \u2713';
+      setTimeout(() => {
+        btn.textContent = original;
+        btn.disabled = false;
+      }, 1500);
+    }
+  } catch (err) {
+    console.error('archmap export failed', err);
+    if (btn) { btn.textContent = original || 'Export'; btn.disabled = false; }
+  }
+}
+
+// Backwards-compatible markdown-only export. Preserved so external
+// callers / keybindings bound to exportMarkdown keep working.
+function exportMarkdown() {
+  const md = buildMarkdown();
+  downloadBlob(new Blob([md], { type: 'text/markdown' }), 'architecture-map.md');
 }
 
 // ── Init ──────────────────────────────────────────────
