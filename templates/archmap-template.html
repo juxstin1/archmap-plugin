@@ -191,11 +191,12 @@ const THEMES = {
       util:'#8b949e', test:'#39d353', config:'#bc8cff',
     },
     canvas: {
-      grid:'rgba(48,54,61,0.3)', tierLabel:'rgba(139,148,158,0.3)',
-      edgeDim:'rgba(48,54,61,0.2)', edgeNormal:'rgba(48,54,61,0.5)',
+      grid:'rgba(48,54,61,0.3)', tierLabel:'rgba(139,148,158,0.45)',
+      edgeDim:'rgba(48,54,61,0.2)', edgeNormal:'rgba(110,118,129,0.55)',
       edgeLabelDim:'rgba(139,148,158,0.35)', edgeLabelHi:'rgba(139,148,158,0.8)',
       lineCountDim:'rgba(139,148,158,0.6)', lineCountHi:'rgba(255,255,255,0.7)',
       barTrack:'rgba(139,148,158,0.15)', labelHi:'#ffffff',
+      ambientGlow:'rgba(88,166,255,0.06)',
     },
     swatch:['#0d1117','#58a6ff','#3fb950','#f85149'],
   },
@@ -214,11 +215,12 @@ const THEMES = {
       util:'#656d76', test:'#1a7f37', config:'#8250df',
     },
     canvas: {
-      grid:'rgba(208,215,222,0.5)', tierLabel:'rgba(101,109,118,0.35)',
-      edgeDim:'rgba(208,215,222,0.3)', edgeNormal:'rgba(175,184,193,0.6)',
+      grid:'rgba(208,215,222,0.5)', tierLabel:'rgba(101,109,118,0.5)',
+      edgeDim:'rgba(208,215,222,0.3)', edgeNormal:'rgba(140,149,161,0.65)',
       edgeLabelDim:'rgba(101,109,118,0.4)', edgeLabelHi:'rgba(101,109,118,0.8)',
       lineCountDim:'rgba(101,109,118,0.6)', lineCountHi:'rgba(31,35,40,0.8)',
       barTrack:'rgba(175,184,193,0.25)', labelHi:'#1f2328',
+      ambientGlow:'rgba(9,105,218,0.05)',
     },
     swatch:['#ffffff','#0969da','#1a7f37','#cf222e'],
   },
@@ -237,11 +239,12 @@ const THEMES = {
       util:'#a89680', test:'#6bbf7b', config:'#c4a0e8',
     },
     canvas: {
-      grid:'rgba(61,48,40,0.4)', tierLabel:'rgba(168,150,128,0.3)',
-      edgeDim:'rgba(61,48,40,0.2)', edgeNormal:'rgba(61,48,40,0.5)',
+      grid:'rgba(61,48,40,0.4)', tierLabel:'rgba(168,150,128,0.45)',
+      edgeDim:'rgba(61,48,40,0.2)', edgeNormal:'rgba(120,100,85,0.6)',
       edgeLabelDim:'rgba(168,150,128,0.35)', edgeLabelHi:'rgba(168,150,128,0.8)',
       lineCountDim:'rgba(168,150,128,0.6)', lineCountHi:'rgba(232,221,211,0.8)',
       barTrack:'rgba(168,150,128,0.15)', labelHi:'#faf0e6',
+      ambientGlow:'rgba(212,135,75,0.07)',
     },
     swatch:['#1c1510','#d4874b','#8fba5a','#e06c5a'],
   },
@@ -260,11 +263,12 @@ const THEMES = {
       util:'#9a9a9a', test:'#4cc9a0', config:'#b48eda',
     },
     canvas: {
-      grid:'rgba(47,47,47,0.4)', tierLabel:'rgba(154,154,154,0.3)',
-      edgeDim:'rgba(47,47,47,0.2)', edgeNormal:'rgba(47,47,47,0.55)',
+      grid:'rgba(47,47,47,0.4)', tierLabel:'rgba(154,154,154,0.45)',
+      edgeDim:'rgba(47,47,47,0.2)', edgeNormal:'rgba(110,110,110,0.6)',
       edgeLabelDim:'rgba(154,154,154,0.35)', edgeLabelHi:'rgba(154,154,154,0.8)',
       lineCountDim:'rgba(154,154,154,0.6)', lineCountHi:'rgba(236,236,236,0.8)',
       barTrack:'rgba(154,154,154,0.15)', labelHi:'#ffffff',
+      ambientGlow:'rgba(16,163,127,0.06)',
     },
     swatch:['#0d0d0d','#10a37f','#5bb5e6','#ef6461'],
   },
@@ -351,6 +355,16 @@ function draw() {
   const rect = canvas.getBoundingClientRect();
   const W = rect.width, H = rect.height;
   ctx.fillStyle = T.css['--bg']; ctx.fillRect(0, 0, W, H);
+  // Atmospheric gradient in screen space — a faint glow in the upper-left
+  // gives the canvas depth instead of feeling like a flat black box.
+  // Painted before the viewport transform so it stays put while panning.
+  if (T.canvas.ambientGlow) {
+    const grad = ctx.createRadialGradient(W * 0.2, H * 0.05, 0, W * 0.2, H * 0.05, Math.max(W, H) * 0.8);
+    grad.addColorStop(0, T.canvas.ambientGlow);
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+  }
   ctx.save(); ctx.translate(viewX, viewY); ctx.scale(viewScale, viewScale);
   drawGrid(W, H); drawTierLabels();
   edges.forEach(e => drawEdge(e));
@@ -361,7 +375,7 @@ function draw() {
 function drawGrid(W, H) {
   const tl = screenToWorld(0, 0), br = screenToWorld(W, H);
   const step = 50;
-  ctx.strokeStyle = T.canvas.grid; ctx.lineWidth = 0.5;
+  ctx.strokeStyle = T.canvas.grid; ctx.lineWidth = 0.4;
   const startX = Math.floor(tl.x / step) * step, startY = Math.floor(tl.y / step) * step;
   for (let x = startX; x < br.x; x += step) { ctx.beginPath(); ctx.moveTo(x, tl.y); ctx.lineTo(x, br.y); ctx.stroke(); }
   for (let y = startY; y < br.y; y += step) { ctx.beginPath(); ctx.moveTo(tl.x, y); ctx.lineTo(br.x, y); ctx.stroke(); }
@@ -374,13 +388,22 @@ function drawTierLabels() {
 
 function drawModule(m) {
   const isHovered = hoveredModule === m.id, isSelected = selectedModule === m.id;
-  if (isHovered || isSelected) { ctx.shadowColor = m.color + '40'; ctx.shadowBlur = 20; }
-  const alpha = isHovered ? 'cc' : isSelected ? 'aa' : '18';
+  // Always-on soft glow gives idle modules depth; hover/select amplifies it.
+  ctx.shadowColor = m.color + ((isHovered || isSelected) ? '40' : '22');
+  ctx.shadowBlur = (isHovered || isSelected) ? 20 : 8;
+  // Idle fill bumped from 18 → 2e; stroke from 44 → 66; hover stroke 88 → aa.
+  const alpha = isHovered ? 'cc' : isSelected ? 'aa' : '2e';
   ctx.fillStyle = m.color + alpha;
-  ctx.strokeStyle = isSelected ? m.color : isHovered ? m.color + '88' : m.color + '44';
-  ctx.lineWidth = isSelected ? 2 : 1;
+  ctx.strokeStyle = isSelected ? m.color : isHovered ? m.color + 'aa' : m.color + '66';
+  ctx.lineWidth = isSelected ? 2 : 1.2;
   roundRect(m.x, m.y, m.w, m.h, 8); ctx.fill(); ctx.stroke();
+  // Clear shadow before drawing interior text — shadows on text read as muddy.
   ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
+
+  // Highlight stripe at the top edge for a modern "card" feel.
+  ctx.fillStyle = m.color + 'cc';
+  roundRect(m.x + 1, m.y + 1, m.w - 2, 2, 1);
+  ctx.fill();
 
   ctx.fillStyle = isHovered || isSelected ? T.canvas.labelHi : m.color;
   ctx.font = 'bold 13px "Cascadia Code", "Fira Code", monospace';
@@ -411,9 +434,9 @@ function drawEdge(e) {
   const cx = mx + dy * 0.1, cy = my - dx * 0.1;
 
   ctx.beginPath(); ctx.moveTo(fp.x, fp.y); ctx.quadraticCurveTo(cx, cy, tp.x, tp.y);
-  if (isDimmed) { ctx.strokeStyle = T.canvas.edgeDim; ctx.lineWidth = 0.5; }
-  else if (isHighlighted) { ctx.strokeStyle = from.color + '55'; ctx.lineWidth = 1.5; }
-  else { ctx.strokeStyle = T.canvas.edgeNormal; ctx.lineWidth = 0.8; }
+  if (isDimmed) { ctx.strokeStyle = T.canvas.edgeDim; ctx.lineWidth = 0.6; }
+  else if (isHighlighted) { ctx.strokeStyle = from.color + '88'; ctx.lineWidth = 2; }
+  else { ctx.strokeStyle = T.canvas.edgeNormal; ctx.lineWidth = 1.1; }
   ctx.stroke();
 
   const angle = Math.atan2(tp.y - cy, tp.x - cx), sz = 6;
