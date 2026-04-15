@@ -1,0 +1,129 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate plugin structure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate plugin.json
+        run: |
+          jq empty .claude-plugin/plugin.json
+          jq -e '.name and .version and .description' .claude-plugin/plugin.json > /dev/null
+          echo "plugin.json: ok"
+
+      - name: Validate marketplace.json
+        run: |
+          jq empty .claude-plugin/marketplace.json
+          jq -e '.name and (.plugins | type == "array" and length > 0)' .claude-plugin/marketplace.json > /dev/null
+          echo "marketplace.json: ok"
+
+      - name: Plugin and marketplace versions must agree
+        run: |
+          pv=$(jq -r .version .claude-plugin/plugin.json)
+          mv=$(jq -r '.plugins[] | select(.name=="archmap") | .version' .claude-plugin/marketplace.json)
+          if [ "$pv" != "$mv" ]; then
+            echo "::error::plugin.json version ($pv) != marketplace.json archmap version ($mv)"
+            exit 1
+          fi
+          echo "versions agree: $pv"
+
+      - name: Validate hooks.json
+        run: |
+          jq empty hooks/hooks.json
+          jq -e '.hooks | type == "object"' hooks/hooks.json > /dev/null
+          echo "hooks.json: ok"
+
+      - name: Hook scripts are executable
+        run: |
+          for f in hooks/scripts/*.sh; do
+            mode=$(git ls-files --stage "$f" | awk '{print $1}')
+            if [ "$mode" != "100755" ]; then
+              echo "::error file=$f::not executable in index (mode=$mode). Run: git update-index --chmod=+x $f"
+              exit 1
+            fi
+          done
+          echo "hook scripts: executable"
+
+      - name: Hook scripts pass bash syntax check
+        run: |
+          for f in hooks/scripts/*.sh; do
+            bash -n "$f"
+          done
+          echo "hook scripts: syntax ok"
+
+      - name: Hook scripts have set -euo pipefail
+        run: |
+          for f in hooks/scripts/*.sh; do
+            if ! grep -q "set -euo pipefail" "$f"; then
+              echo "::error file=$f::missing 'set -euo pipefail'"
+              exit 1
+            fi
+          done
+          echo "hook scripts: safe-mode ok"
+
+      - name: Template placeholders are present
+        run: |
+          required="{{PROJECT_NAME}} {{STATS_HTML}} {{MODULES_JSON}} {{EDGES_JSON}} {{TIER_LABELS_JSON}} {{PIPELINE_JSON}} {{LEGEND_JSON}}"
+          for p in $required; do
+            if ! grep -qF "$p" templates/archmap-template.html; then
+              echo "::error file=templates/archmap-template.html::missing placeholder $p"
+              exit 1
+            fi
+          done
+          echo "template placeholders: ok"
+
+      - name: Template is self-contained (no external scripts, stylesheets, or fonts)
+        run: |
+          if grep -qE '<script[^>]+src=|<link[^>]+href=|@import[[:space:]]+url|cdn\.' templates/archmap-template.html; then
+            echo "::error::template appears to reference an external resource — it must remain self-contained"
+            grep -nE '<script[^>]+src=|<link[^>]+href=|@import[[:space:]]+url|cdn\.' templates/archmap-template.html || true
+            exit 1
+          fi
+          echo "template: self-contained"
+
+      - name: Required docs present
+        run: |
+          for f in README.md LICENSE CHANGELOG.md CONTRIBUTING.md SECURITY.md; do
+            if [ ! -f "$f" ]; then
+              echo "::error::missing required file: $f"
+              exit 1
+            fi
+          done
+          echo "docs: ok"
+
+  release:
+    name: Draft release on tag
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: validate
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tag matches plugin.json version
+        run: |
+          pv=$(jq -r .version .claude-plugin/plugin.json)
+          tag="${GITHUB_REF##refs/tags/v}"
+          if [ "$pv" != "$tag" ]; then
+            echo "::error::tag v$tag does not match plugin.json version $pv"
+            exit 1
+          fi
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body_path: CHANGELOG.md
+          draft: true

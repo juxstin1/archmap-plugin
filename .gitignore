@@ -1,5 +1,37 @@
+# Dependencies
 node_modules/
+
+# OS
 .DS_Store
 Thumbs.db
+*~
+
+# Editors / IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Secrets — never commit these
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+id_rsa
+id_rsa.pub
+
+# Logs & caches
+*.log
 *.db
+.cache/
+__pycache__/
+*.py[cod]
+
+# Local superpowers scratch
 docs/superpowers/
+
+# Local archmap output for this repo's own dogfooded run
+# (regenerate with `/archmap` locally; don't commit unless you want to)
+# docs/architecture.html
+# docs/architecture-map.md

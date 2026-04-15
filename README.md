@@ -12,6 +12,10 @@
   <img src="https://img.shields.io/badge/Themes-4%20Presets-f59e0b?style=for-the-badge" alt="4 themes" />
 </p>
 
+<p align="center">
+  <a href="https://juxstin1.github.io/archmap-plugin/"><strong>Live site & demo →</strong></a>
+</p>
+
 ## What is Archmap?
 
 A Claude Code plugin that turns any codebase into an interactive architecture map. Pan, zoom, inspect modules, trace dependencies, switch themes, and keep your architecture docs up to date — automatically.
@@ -22,15 +26,37 @@ A Claude Code plugin that turns any codebase into an interactive architecture ma
 
 ## Install
 
-```bash
-claude plugin install /path/to/archmap-plugin --scope user
+Install from the marketplace (recommended) inside Claude Code:
+
+```text
+/plugin marketplace add juxstin1/archmap-plugin
+/plugin install archmap@archmap
 ```
 
-Local test mode:
+The first command registers this repository as a plugin marketplace; the second installs the `archmap` plugin from it. Both commands are Claude Code slash commands — type them into the Claude Code interface, not a shell.
+
+### Local development
+
+Clone the repo and point Claude Code at your working copy:
 
 ```bash
-claude --plugin-dir /path/to/archmap-plugin
+git clone https://github.com/juxstin1/archmap-plugin.git
+cd archmap-plugin
+claude --plugin-dir "$(pwd)"
 ```
+
+### Requirements
+
+- Claude Code
+- `bash` (git-bash or WSL on Windows)
+- `jq` recommended for full `.archmap.json` parsing; hooks fall back gracefully without it
+
+## Quickstart
+
+1. Open Claude Code in any repo: `cd your-project && claude`
+2. Run `/archmap` — a few seconds later, `docs/architecture.html` opens in your browser
+3. Edit some code, then run `/archmap:repair` to surgically patch just what changed
+4. Run `/archmap:diff` any time you want a drift report without modifying the map
 
 ## Commands
 
@@ -69,7 +95,7 @@ Read-only comparison between the current codebase and existing map. Shows added/
 
 ## Configuration
 
-Create `.archmap.json` in your project root (optional):
+Create `.archmap.json` in your project root (optional — every field has a sensible default):
 
 ```json
 {
@@ -80,9 +106,24 @@ Create `.archmap.json` in your project root (optional):
     "html": "docs/architecture.html",
     "markdown": "docs/architecture-map.md"
   },
-  "theme": "dark"
+  "theme": "dark",
+  "hooks": {
+    "sessionStart": false
+  }
 }
 ```
+
+| Field | Type | Default | Purpose |
+|---|---|---|---|
+| `exclude` | `string[]` | `[]` | Paths or globs to skip during exploration (e.g. `node_modules`, `dist`, `vendor`). |
+| `tiers` | `object` | `{}` | Override the auto-detected tier for specific path prefixes. Keys are path prefixes, values are tier keys (see tier list below). |
+| `pinned` | `string[]` | `[]` | Module IDs that are never removed or re-tiered by `/archmap:repair`. |
+| `output.html` | `string` | `docs/architecture.html` | Custom HTML output path. Hooks read this to watch the right file. |
+| `output.markdown` | `string` | `docs/architecture-map.md` | Custom markdown output path. |
+| `theme` | `string` | `dark` | Default theme. One of: `dark`, `light`, `claude`, `openai`. |
+| `hooks.sessionStart` | `boolean` | `true` | Set to `false` to silence the session-start staleness nudge. |
+
+**Available tier keys:** `entry`, `frontend`, `ir`, `codegen`, `runtime`, `lint`, `driver`, `data`, `api`, `ui`, `infra`, `util`, `test`, `config`.
 
 ## Visualization features
 
@@ -98,21 +139,29 @@ Create `.archmap.json` in your project root (optional):
 
 ```text
 archmap-plugin/
-|- .claude-plugin/plugin.json
+|- .claude-plugin/
+|  |- plugin.json
+|  `- marketplace.json
 |- commands/
 |  |- archmap.md
 |  |- archmap-repair.md
 |  |- archmap-focus.md
-|  |- archmap-diff.md
+|  `- archmap-diff.md
 |- agents/
 |  |- archmap-explorer.md
-|  |- archmap-repair-agent.md
+|  `- archmap-repair-agent.md
 |- skills/architecture/SKILL.md
 |- hooks/
 |  |- hooks.json
-|  |- scripts/detect-unmapped.sh
-|  |- scripts/flag-stale-modules.sh
+|  `- scripts/
+|     |- detect-unmapped.sh
+|     `- flag-stale-modules.sh
 |- templates/archmap-template.html
+|- CHANGELOG.md
+|- CONTRIBUTING.md
+|- SECURITY.md
+|- LICENSE
+`- README.md
 ```
 
 ## Why teams use it
@@ -122,5 +171,21 @@ archmap-plugin/
 - Better visibility into coupling and dependency spread
 - Living architecture docs that stay close to code
 - Automatic drift detection keeps maps honest
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `/archmap` produced a broken map | `rm docs/architecture.html && /archmap` — regen from scratch |
+| SessionStart nudge is too chatty | Set `hooks.sessionStart: false` in `.archmap.json` |
+| `docs/` conflicts with GitHub Pages | Change `output.html` to a different path in `.archmap.json` |
+| Hook warnings on Windows | Ensure bash is available (git-bash or WSL) |
+
+## Contributing & feedback
+
+- Bugs & feature requests: [open an issue](https://github.com/juxstin1/archmap-plugin/issues/new/choose)
+- Discussions: [GitHub Discussions](https://github.com/juxstin1/archmap-plugin/discussions)
+- See [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a PR
+- Security reports: see [SECURITY.md](./SECURITY.md)
 
 ![archmap footer](https://capsule-render.vercel.app/api?type=rect&height=120&color=0:0b1220,100:0f172a&text=Map%20it.%20Repair%20it.%20Ship%20it.&fontColor=e2e8f0&fontSize=28&animation=fadeIn)
