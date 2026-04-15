@@ -61,6 +61,7 @@ The HTML template uses these exact placeholder strings (double-curly-brace forma
 - `{{TIER_LABELS_JSON}}` — JSON array of tier label positions
 - `{{PIPELINE_JSON}}` — JSON array of pipeline steps
 - `{{LEGEND_JSON}}` — JSON array of legend items
+- `{{LAYOUT_JSON}}` — JSON object mapping module IDs to `{x, y}` user-arranged positions (loaded from `.archmap/layout.json` at generation time; `{}` when absent)
 
 ## Map State Extraction
 

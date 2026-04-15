@@ -95,7 +95,8 @@ Tell the user:
 
 - This is a SURGICAL operation — only the target module and its direct edges are modified
 - Never reposition modules that aren't the target or its immediate neighbors
-- Preserve all other modules' data exactly as-is
-- If the focused module was deleted from the codebase, remove it and clean up its edges (treat as a repair)
+- Preserve all other modules' data exactly as-is — including their positions
+- **Preserve user layout.** Extract the existing map's `const layoutOverrides = {...}` block and carry it forward verbatim into `{{LAYOUT_JSON}}`. Focus must never drop user-arranged positions.
+- If the focused module was deleted from the codebase, remove it and clean up its edges (treat as a repair). Drop its entry from `layoutOverrides` as well.
 - Module `color` properties are set at runtime — do NOT hardcode colors
 - Respect `.archmap.json` pinned modules and tier overrides

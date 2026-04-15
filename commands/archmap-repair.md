@@ -95,9 +95,15 @@ If `--details` flag is used, ONLY perform detail fixes (skip staleness/layout).
    - `{{TIER_LABELS_JSON}}` → recalculated tier labels
    - `{{PIPELINE_JSON}}` → updated pipeline (if data flow changed)
    - `{{LEGEND_JSON}}` → updated legend (only tiers actually used)
-3. **Write** to `docs/architecture.html` (or custom path from `.archmap.json`)
-4. **Regenerate** `docs/architecture-map.md` from the repaired data using the same markdown format as `/archmap` Phase 3.5
-5. **Open** in browser
+   - `{{LAYOUT_JSON}}` → merged user-arranged positions (see below)
+3. **Preserve user layout.** Extract the existing map's `const layoutOverrides = {...}` block AND the `modules[].x / .y` positions — they represent user-arranged positions. Merge those into the new `{{LAYOUT_JSON}}` so repair never loses manually-placed modules. For each module in the repaired result:
+   - If it existed in the old map: keep its old x/y in `layoutOverrides`.
+   - If it's newly added: auto-layout in its tier column (do NOT add to `layoutOverrides` — let defaults stand so the user can decide where it belongs).
+   - If the user's manual position would now collide with a new module, flag the collision in Phase 5 so the user can rearrange if they want.
+   Also merge `.archmap/layout.json` (if present) into the result — it's the source of truth for shared layouts.
+4. **Write** to `docs/architecture.html` (or custom path from `.archmap.json`)
+5. **Regenerate** `docs/architecture-map.md` from the repaired data using the same markdown format as `/archmap` Phase 3.5
+6. **Open** in browser
 
 ### Phase 5: Report
 

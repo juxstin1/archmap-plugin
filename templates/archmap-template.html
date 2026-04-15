@@ -135,6 +135,110 @@
   }
 
   #controls button:hover { background: var(--border); border-color: var(--accent); }
+  #controls button.active {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+  }
+
+  /* Edit mode: dashed outline on the canvas container so the user
+     knows they are in a special state. Subtle, not alarming. */
+  body.edit-mode #canvas-container {
+    outline: 1px dashed var(--accent);
+    outline-offset: -1px;
+  }
+
+  /* Modal used by the Save Layout button. Hidden by default; adds
+     .open to show. */
+  .modal {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal.open { display: flex; }
+  .modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  .modal-card {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    width: min(440px, 92vw);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  }
+  .modal-card h3 {
+    font-size: 16px;
+    margin-bottom: 12px;
+    color: var(--text);
+  }
+  .modal-desc {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.55;
+    margin-bottom: 16px;
+  }
+  .modal-desc code {
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 11px;
+  }
+  .modal-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .modal-btn {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.15s;
+  }
+  .modal-btn:hover { border-color: var(--accent); }
+  .modal-btn.primary {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+    font-weight: 500;
+  }
+  .modal-btn.primary:hover { filter: brightness(1.1); }
+  .modal-btn.secondary { color: var(--text-dim); }
+  .modal-btn code {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 11px;
+  }
+  .modal-hint {
+    font-size: 11px;
+    color: var(--text-dim);
+    flex: 1;
+    min-width: 180px;
+  }
+  .modal-hint code {
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 10px;
+  }
 
   .maturity-bar { display: flex; gap: 2px; margin-top: 4px; }
   .maturity-seg { height: 4px; border-radius: 2px; flex: 1; }
@@ -165,7 +269,32 @@
   <button onclick="resetView()">Reset View</button>
   <button onclick="toggleEdgeMode()">Toggle Edges</button>
   <button onclick="toggleLabels()">Toggle Labels</button>
+  <button id="edit-btn" onclick="toggleEditMode()" title="Toggle Edit mode (shortcut: E). Drag modules to reposition them. Shift-drag bypasses the 10px grid snap.">Edit</button>
+  <button id="save-layout-btn" onclick="openSaveLayoutModal()" style="display:none" title="Save your layout to share with teammates (download JSON) or bake into the HTML (copy patch).">Save</button>
+  <button id="reset-layout-btn" onclick="resetLayout()" style="display:none" title="Restore the generated layout. Discards any manual repositioning.">Reset Layout</button>
   <button id="export-btn" onclick="exportAll()" title="Downloads a PNG of the map + a markdown file referencing it. Drop both in your docs/ folder for a shareable pair.">Export</button>
+</div>
+
+<div id="save-layout-modal" class="modal">
+  <div class="modal-backdrop" onclick="closeSaveLayoutModal()"></div>
+  <div class="modal-card">
+    <h3>Save layout</h3>
+    <p class="modal-desc">
+      Your positions are <strong>already saved in this browser</strong> via localStorage.
+      To share them with teammates, export them too:
+    </p>
+    <div class="modal-actions">
+      <button onclick="downloadLayoutJson()" class="modal-btn primary">Download <code>layout.json</code></button>
+      <span class="modal-hint">Commit to <code>.archmap/layout.json</code> in your project root.</span>
+    </div>
+    <div class="modal-actions">
+      <button id="copy-patch-btn" onclick="copyLayoutPatch()" class="modal-btn">Copy JS patch</button>
+      <span class="modal-hint">Paste into the <code>layoutOverrides</code> object in <code>docs/architecture.html</code>.</span>
+    </div>
+    <div class="modal-actions">
+      <button onclick="closeSaveLayoutModal()" class="modal-btn secondary">Close</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -289,6 +418,61 @@ const pipelineSteps = {{PIPELINE_JSON}};
 
 const legendItems = {{LEGEND_JSON}};
 
+// Baked-in layout overrides from .archmap/layout.json (substituted by
+// the /archmap command at generation time). Shape: { moduleId: {x,y} }.
+// Empty object when no layout.json exists in the project.
+const layoutOverrides = {{LAYOUT_JSON}};
+
+// Preserve original positions so "Reset layout" can restore them even
+// after the user has dragged modules around. This runs before any
+// drag handlers attach and before applyLayoutOverrides below.
+modules.forEach(m => { m._origX = m.x; m._origY = m.y; });
+
+// Persistence key for browser-saved drag positions. Namespaced by
+// project name so different maps in different tabs don't collide.
+const LAYOUT_STORAGE_KEY = 'archmap-layout:' + (document.body.dataset.projectName || 'default');
+
+// Read live position overrides from localStorage. Returns {} on miss
+// or parse failure.
+function readLocalLayout() {
+  try {
+    const raw = localStorage.getItem(LAYOUT_STORAGE_KEY);
+    if (!raw) return {};
+    const obj = JSON.parse(raw);
+    return (obj && typeof obj === 'object') ? obj : {};
+  } catch (_) { return {}; }
+}
+
+function writeLocalLayout(positions) {
+  try { localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(positions)); } catch (_) {}
+}
+
+function clearLocalLayout() {
+  try { localStorage.removeItem(LAYOUT_STORAGE_KEY); } catch (_) {}
+}
+
+// Apply overrides from both sources (baked + local) on top of
+// whatever _origX/_origY said. Local wins over baked; baked wins over
+// the agent-generated default. Call this after any drag or after a
+// Reset to bring the in-memory modules array into sync.
+function applyLayoutOverrides() {
+  const local = readLocalLayout();
+  modules.forEach(m => {
+    const override = local[m.id] || (layoutOverrides && layoutOverrides[m.id]);
+    if (override && typeof override.x === 'number' && typeof override.y === 'number') {
+      m.x = override.x;
+      m.y = override.y;
+    } else {
+      m.x = m._origX;
+      m.y = m._origY;
+    }
+  });
+}
+
+// Apply overrides once at load. Any drag triggers another application
+// and a redraw; see the mouse handlers below.
+applyLayoutOverrides();
+
 // ── Theme Engine ──────────────────────────────────────
 
 function tierColor(tier) { return T.tiers[tier] || T.tiers.entry; }
@@ -335,6 +519,14 @@ let viewX = 0, viewY = 0, viewScale = 1;
 let isDragging = false, dragStartX, dragStartY;
 let hoveredModule = null, selectedModule = null;
 let showEdgeLabels = true, showAllLabels = true;
+
+// Edit mode: when true, clicks on modules drag them instead of
+// selecting. Resolved at mousedown; never changes mid-gesture.
+let editMode = false;
+let dragModuleId = null;     // id of module currently being dragged
+let dragOffsetX = 0;         // world-space offset within the module
+let dragOffsetY = 0;
+let layoutDirty = false;     // true once any module has moved from _orig
 
 function resize() {
   const container = document.getElementById('canvas-container');
@@ -487,6 +679,24 @@ function hitTest(sx, sy) {
 }
 
 canvas.addEventListener('mousedown', e => {
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+
+  // In edit mode, clicking a module starts a drag-to-reposition.
+  // Resolved here at mousedown; doesn't change mid-gesture.
+  if (editMode) {
+    const hit = hitTest(sx, sy);
+    if (hit) {
+      dragModuleId = hit.id;
+      const w = screenToWorld(sx, sy);
+      dragOffsetX = w.x - hit.x;
+      dragOffsetY = w.y - hit.y;
+      canvas.style.cursor = 'grabbing';
+      return;
+    }
+    // Fall through: empty-canvas mousedown pans even in edit mode.
+  }
+
   isDragging = true; dragStartX = e.clientX - viewX; dragStartY = e.clientY - viewY;
   canvas.style.cursor = 'grabbing';
 });
@@ -494,12 +704,47 @@ canvas.addEventListener('mousedown', e => {
 canvas.addEventListener('mousemove', e => {
   const rect = canvas.getBoundingClientRect();
   const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+
+  // Drag-to-reposition: move the module under world coords, with
+  // a 10-px grid snap (shift bypasses for fine-tuning).
+  if (dragModuleId) {
+    const m = modules.find(mod => mod.id === dragModuleId);
+    if (m) {
+      const w = screenToWorld(sx, sy);
+      let nx = w.x - dragOffsetX;
+      let ny = w.y - dragOffsetY;
+      if (!e.shiftKey) {
+        nx = Math.round(nx / 10) * 10;
+        ny = Math.round(ny / 10) * 10;
+      }
+      m.x = nx; m.y = ny;
+      layoutDirty = true;
+      draw();
+    }
+    return;
+  }
+
   if (isDragging) { viewX = e.clientX - dragStartX; viewY = e.clientY - dragStartY; draw(); return; }
   const hit = hitTest(sx, sy), newHovered = hit ? hit.id : null;
-  if (newHovered !== hoveredModule) { hoveredModule = newHovered; canvas.style.cursor = hit ? 'pointer' : 'grab'; draw(); }
+  if (newHovered !== hoveredModule) {
+    hoveredModule = newHovered;
+    canvas.style.cursor = hit ? (editMode ? 'move' : 'pointer') : (editMode ? 'crosshair' : 'grab');
+    draw();
+  }
 });
 
 canvas.addEventListener('mouseup', e => {
+  // End a drag-to-reposition: commit current positions to localStorage
+  // and refresh the Save/Reset UI state.
+  if (dragModuleId) {
+    persistLayoutToLocal();
+    refreshLayoutControls();
+    dragModuleId = null;
+    canvas.style.cursor = hoveredModule ? (editMode ? 'move' : 'pointer') : (editMode ? 'crosshair' : 'grab');
+    draw();
+    return;
+  }
+
   if (isDragging) {
     const dx = Math.abs(e.clientX - (dragStartX + viewX)), dy = Math.abs(e.clientY - (dragStartY + viewY));
     if (dx < 3 && dy < 3) {
@@ -611,6 +856,112 @@ function showDefaultSidebar() {
 function resetView() { viewX = 30; viewY = 30; viewScale = 1; selectedModule = null; showDefaultSidebar(); draw(); }
 function toggleEdgeMode() { showEdgeLabels = !showEdgeLabels; draw(); }
 function toggleLabels() { showAllLabels = !showAllLabels; draw(); }
+
+// ── Layout editing ────────────────────────────────────
+
+// Persist the current module positions to localStorage. Stores only
+// x/y; other fields reconstruct from the modules array on load.
+function persistLayoutToLocal() {
+  const positions = {};
+  modules.forEach(m => {
+    positions[m.id] = { x: Math.round(m.x), y: Math.round(m.y) };
+  });
+  writeLocalLayout(positions);
+}
+
+// Does any module currently sit at a non-default position? Compared
+// against _origX/_origY captured at load. Drives Save/Reset button
+// visibility and the layoutDirty flag.
+function hasLayoutOverrides() {
+  return modules.some(m => m.x !== m._origX || m.y !== m._origY);
+}
+
+// Sync the control bar to the current edit/layout state. Called on
+// edit-mode toggle and after every drag.
+function refreshLayoutControls() {
+  const editBtn = document.getElementById('edit-btn');
+  const saveBtn = document.getElementById('save-layout-btn');
+  const resetBtn = document.getElementById('reset-layout-btn');
+  if (editBtn) editBtn.classList.toggle('active', editMode);
+  const showSaveReset = editMode && hasLayoutOverrides();
+  if (saveBtn) saveBtn.style.display = showSaveReset ? '' : 'none';
+  if (resetBtn) resetBtn.style.display = showSaveReset ? '' : 'none';
+  document.body.classList.toggle('edit-mode', editMode);
+}
+
+function toggleEditMode() {
+  editMode = !editMode;
+  dragModuleId = null;
+  canvas.style.cursor = editMode ? 'crosshair' : 'grab';
+  refreshLayoutControls();
+  draw();
+}
+
+// Restore every module to its baked-in default position. Drops any
+// localStorage override. Confirm prompt since this is destructive
+// for user-arranged maps.
+function resetLayout() {
+  if (!confirm('Reset all manual positions?\n\nThis discards any repositioning you have done and restores the generated layout.')) return;
+  clearLocalLayout();
+  applyLayoutOverrides();   // re-applies baked overrides on top of _orig
+  layoutDirty = false;
+  refreshLayoutControls();
+  draw();
+}
+
+// Open the Save Layout modal. The user has already persisted to
+// localStorage on every drag — this UI is just for sharing the
+// layout with teammates (download JSON) or baking into the HTML
+// (copy JS patch).
+function openSaveLayoutModal() {
+  const modal = document.getElementById('save-layout-modal');
+  if (modal) modal.classList.add('open');
+}
+function closeSaveLayoutModal() {
+  const modal = document.getElementById('save-layout-modal');
+  if (modal) modal.classList.remove('open');
+}
+
+// Build the layout-file content as a formatted JSON string. Used by
+// both download and copy-patch outputs.
+function buildLayoutJson() {
+  const positions = {};
+  modules.forEach(m => {
+    positions[m.id] = { x: Math.round(m.x), y: Math.round(m.y) };
+  });
+  return JSON.stringify({ version: 1, positions: positions }, null, 2);
+}
+
+function downloadLayoutJson() {
+  const s = slug(document.body.dataset.projectName || 'archmap');
+  downloadBlob(new Blob([buildLayoutJson()], { type: 'application/json' }), s + '-layout.json');
+  closeSaveLayoutModal();
+}
+
+// Put a ready-to-paste snippet of `{id: {x,y}}` on the clipboard so
+// the user can edit docs/architecture.html directly if they prefer.
+async function copyLayoutPatch() {
+  const positions = {};
+  modules.forEach(m => {
+    positions[m.id] = { x: Math.round(m.x), y: Math.round(m.y) };
+  });
+  const snippet =
+    '// Paste this object as `layoutOverrides` in the generated HTML\n' +
+    '// (or write it to .archmap/layout.json.positions):\n' +
+    JSON.stringify(positions, null, 2);
+  try {
+    await navigator.clipboard.writeText(snippet);
+    const btn = document.getElementById('copy-patch-btn');
+    if (btn) {
+      const orig = btn.textContent;
+      btn.textContent = 'Copied \u2713';
+      setTimeout(() => { btn.textContent = orig; }, 1200);
+    }
+  } catch (err) {
+    console.error('Clipboard copy failed', err);
+    alert('Could not copy to clipboard — your browser blocked it. Use "Download layout.json" instead.');
+  }
+}
 
 // Builds the markdown export as a string. When `imagePath` is supplied,
 // embeds it at the top so a sibling `<imagePath>` file renders inline
@@ -900,6 +1251,31 @@ const saved = (() => { try { return localStorage.getItem('archmap-theme'); } cat
 applyTheme(saved && THEMES[saved] ? saved : 'dark');
 viewX = 30; viewY = 30;
 resize();
+
+// Keyboard shortcuts. `E` toggles edit mode. Escape exits edit mode
+// or closes the save modal. Shortcuts ignore keystrokes targeted at
+// any <input>/<textarea>/contentEditable element (none exist today,
+// but guards against future sidebar inputs).
+window.addEventListener('keydown', e => {
+  const tag = e.target && e.target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key === 'e' || e.key === 'E') {
+    e.preventDefault();
+    toggleEditMode();
+  } else if (e.key === 'Escape') {
+    const modal = document.getElementById('save-layout-modal');
+    if (modal && modal.classList.contains('open')) {
+      closeSaveLayoutModal();
+    } else if (editMode) {
+      toggleEditMode();
+    }
+  }
+});
+
+// Make sure buttons reflect state at load (in case the user arrived
+// with a non-empty localStorage layout from a prior session).
+refreshLayoutControls();
 </script>
 </body>
 </html>
