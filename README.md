@@ -12,6 +12,10 @@
   <img src="https://img.shields.io/badge/Themes-4%20Presets-f59e0b?style=for-the-badge" alt="4 themes" />
 </p>
 
+<p align="center">
+  <a href="https://juxstin1.github.io/archmap-plugin/"><strong>Live site & demo →</strong></a>
+</p>
+
 ## What is Archmap?
 
 A Claude Code plugin that turns any codebase into an interactive architecture map. Pan, zoom, inspect modules, trace dependencies, switch themes, and keep your architecture docs up to date — automatically.

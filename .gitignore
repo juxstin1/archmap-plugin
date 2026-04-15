@@ -25,6 +25,8 @@ id_rsa.pub
 *.log
 *.db
 .cache/
+__pycache__/
+*.py[cod]
 
 # Local superpowers scratch
 docs/superpowers/

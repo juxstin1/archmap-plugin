@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>archmap-plugin — Architecture Map</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', -apple-system, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    transition: background 0.3s, color 0.3s;
+  }
+
+  #header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background 0.3s, border-color 0.3s;
+  }
+
+  #header h1 { font-size: 18px; font-weight: 600; color: var(--text); }
+  #header h1 span { color: var(--accent); }
+
+  .header-right { display: flex; align-items: center; gap: 20px; }
+
+  #header .stats {
+    font-size: 13px; color: var(--text-dim); display: flex; gap: 20px;
+  }
+
+  #header .stats .stat-val { color: var(--accent); font-weight: 600; }
+
+  .theme-picker {
+    display: flex; gap: 4px; padding: 3px;
+    background: var(--bg); border-radius: 8px; border: 1px solid var(--border);
+  }
+
+  .theme-btn {
+    position: relative; width: 28px; height: 28px;
+    border-radius: 6px; border: 2px solid transparent;
+    cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+  }
+
+  .theme-btn:hover { transform: scale(1.1); }
+  .theme-btn.active { border-color: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
+
+  .theme-btn .swatch-tl, .theme-btn .swatch-tr,
+  .theme-btn .swatch-bl, .theme-btn .swatch-br {
+    position: absolute; width: 50%; height: 50%;
+  }
+  .theme-btn .swatch-tl { top: 0; left: 0; }
+  .theme-btn .swatch-tr { top: 0; right: 0; }
+  .theme-btn .swatch-bl { bottom: 0; left: 0; }
+  .theme-btn .swatch-br { bottom: 0; right: 0; }
+
+  #canvas-container { position: fixed; top: 48px; left: 0; right: 320px; bottom: 0; }
+  canvas { width: 100%; height: 100%; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+
+  #sidebar {
+    position: fixed; top: 48px; right: 0; bottom: 0; width: 320px;
+    background: var(--surface); border-left: 1px solid var(--border);
+    overflow-y: auto; padding: 16px; z-index: 50;
+    transition: background 0.3s, border-color 0.3s;
+  }
+
+  #sidebar h2 {
+    font-size: 14px; color: var(--text-dim); text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 12px;
+  }
+
+  #sidebar .detail-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  #sidebar .detail-subtitle { font-size: 12px; color: var(--text-dim); margin-bottom: 16px; }
+  #sidebar .detail-section { margin-bottom: 16px; }
+
+  #sidebar .detail-section h3 {
+    font-size: 12px; color: var(--text-dim); text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 8px;
+    border-bottom: 1px solid var(--border); padding-bottom: 4px;
+  }
+
+  #sidebar .detail-section ul { list-style: none; font-size: 13px; line-height: 1.6; }
+  #sidebar .detail-section ul li { padding: 2px 0; color: var(--text); }
+
+  #sidebar .detail-section ul li code {
+    background: var(--code-bg); padding: 1px 6px; border-radius: 3px;
+    font-size: 12px; font-family: 'Cascadia Code', 'Fira Code', monospace; color: var(--text);
+  }
+
+  .legend { margin-top: 20px; border-top: 1px solid var(--border); padding-top: 12px; }
+
+  .legend-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: var(--text-dim); margin-bottom: 6px;
+  }
+
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  #pipeline { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px; }
+
+  .pipe-step {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: var(--text-dim); margin-bottom: 4px;
+  }
+
+  .pipe-arrow { color: var(--accent); font-size: 10px; }
+
+  .pipe-label {
+    background: var(--pipe-bg); border: 1px solid var(--pipe-border);
+    border-radius: 4px; padding: 2px 8px;
+    font-family: 'Cascadia Code', monospace; font-size: 11px; color: var(--text);
+  }
+
+  #controls {
+    position: fixed; bottom: 16px; left: 16px;
+    display: flex; gap: 8px; z-index: 50;
+  }
+
+  #controls button {
+    background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;
+    transition: all 0.15s;
+  }
+
+  #controls button:hover { background: var(--border); border-color: var(--accent); }
+
+  .maturity-bar { display: flex; gap: 2px; margin-top: 4px; }
+  .maturity-seg { height: 4px; border-radius: 2px; flex: 1; }
+</style>
+</head>
+<body data-project-name="archmap-plugin">
+
+<div id="header">
+  <h1><span>archmap-plugin</span> Architecture</h1>
+  <div class="header-right">
+    <div class="stats">
+      <div><span class="stat-val">~2,400</span> lines</div><div><span class="stat-val">14</span> files</div><div><span class="stat-val">5</span> tiers</div>
+    </div>
+    <div class="theme-picker" id="theme-picker"></div>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <canvas id="graph"></canvas>
+</div>
+
+<div id="sidebar">
+  <h2>Inspector</h2>
+  <div id="detail-content"></div>
+</div>
+
+<div id="controls">
+  <button onclick="resetView()">Reset View</button>
+  <button onclick="toggleEdgeMode()">Toggle Edges</button>
+  <button onclick="toggleLabels()">Toggle Labels</button>
+  <button onclick="exportMarkdown()">Export MD</button>
+</div>
+
+<script>
+// ── Theme Definitions ─────────────────────────────────
+// All visual colors flow through T (the active theme).
+//   css.*     → applied to :root as CSS custom properties
+//   tiers.*   → mapped onto each module's .color by tier name
+//   canvas.*  → used directly in canvas draw calls
+
+const THEMES = {
+  dark: {
+    name: 'Dark',
+    css: {
+      '--bg':'#0d1117','--surface':'#161b22','--border':'#30363d',
+      '--text':'#c9d1d9','--text-dim':'#8b949e','--accent':'#58a6ff',
+      '--accent-glow':'rgba(88,166,255,0.35)','--code-bg':'rgba(110,118,129,0.15)',
+      '--pipe-bg':'rgba(88,166,255,0.1)','--pipe-border':'rgba(88,166,255,0.2)',
+    },
+    tiers: {
+      entry:'#58a6ff', frontend:'#3fb950', ir:'#bc8cff', codegen:'#d29922',
+      runtime:'#f85149', lint:'#f778ba', driver:'#39d353',
+      data:'#58a6ff', api:'#d29922', ui:'#f778ba', infra:'#8b949e',
+      util:'#8b949e', test:'#39d353', config:'#bc8cff',
+    },
+    canvas: {
+      grid:'rgba(48,54,61,0.3)', tierLabel:'rgba(139,148,158,0.3)',
+      edgeDim:'rgba(48,54,61,0.2)', edgeNormal:'rgba(48,54,61,0.5)',
+      edgeLabelDim:'rgba(139,148,158,0.35)', edgeLabelHi:'rgba(139,148,158,0.8)',
+      lineCountDim:'rgba(139,148,158,0.6)', lineCountHi:'rgba(255,255,255,0.7)',
+      barTrack:'rgba(139,148,158,0.15)', labelHi:'#ffffff',
+    },
+    swatch:['#0d1117','#58a6ff','#3fb950','#f85149'],
+  },
+  light: {
+    name: 'Light',
+    css: {
+      '--bg':'#f6f8fa','--surface':'#ffffff','--border':'#d1d9e0',
+      '--text':'#1f2328','--text-dim':'#656d76','--accent':'#0969da',
+      '--accent-glow':'rgba(9,105,218,0.3)','--code-bg':'rgba(175,184,193,0.2)',
+      '--pipe-bg':'rgba(9,105,218,0.06)','--pipe-border':'rgba(9,105,218,0.15)',
+    },
+    tiers: {
+      entry:'#0969da', frontend:'#1a7f37', ir:'#8250df', codegen:'#bf8700',
+      runtime:'#cf222e', lint:'#bf3989', driver:'#1a7f37',
+      data:'#0969da', api:'#bf8700', ui:'#bf3989', infra:'#656d76',
+      util:'#656d76', test:'#1a7f37', config:'#8250df',
+    },
+    canvas: {
+      grid:'rgba(208,215,222,0.5)', tierLabel:'rgba(101,109,118,0.35)',
+      edgeDim:'rgba(208,215,222,0.3)', edgeNormal:'rgba(175,184,193,0.6)',
+      edgeLabelDim:'rgba(101,109,118,0.4)', edgeLabelHi:'rgba(101,109,118,0.8)',
+      lineCountDim:'rgba(101,109,118,0.6)', lineCountHi:'rgba(31,35,40,0.8)',
+      barTrack:'rgba(175,184,193,0.25)', labelHi:'#1f2328',
+    },
+    swatch:['#ffffff','#0969da','#1a7f37','#cf222e'],
+  },
+  claude: {
+    name: 'Claude',
+    css: {
+      '--bg':'#1c1510','--surface':'#261e17','--border':'#3d3028',
+      '--text':'#e8ddd3','--text-dim':'#a89680','--accent':'#d4874b',
+      '--accent-glow':'rgba(212,135,75,0.3)','--code-bg':'rgba(168,150,128,0.12)',
+      '--pipe-bg':'rgba(212,135,75,0.08)','--pipe-border':'rgba(212,135,75,0.2)',
+    },
+    tiers: {
+      entry:'#d4874b', frontend:'#8fba5a', ir:'#c4a0e8', codegen:'#e0b44c',
+      runtime:'#e06c5a', lint:'#d48fb5', driver:'#6bbf7b',
+      data:'#d4874b', api:'#e0b44c', ui:'#d48fb5', infra:'#a89680',
+      util:'#a89680', test:'#6bbf7b', config:'#c4a0e8',
+    },
+    canvas: {
+      grid:'rgba(61,48,40,0.4)', tierLabel:'rgba(168,150,128,0.3)',
+      edgeDim:'rgba(61,48,40,0.2)', edgeNormal:'rgba(61,48,40,0.5)',
+      edgeLabelDim:'rgba(168,150,128,0.35)', edgeLabelHi:'rgba(168,150,128,0.8)',
+      lineCountDim:'rgba(168,150,128,0.6)', lineCountHi:'rgba(232,221,211,0.8)',
+      barTrack:'rgba(168,150,128,0.15)', labelHi:'#faf0e6',
+    },
+    swatch:['#1c1510','#d4874b','#8fba5a','#e06c5a'],
+  },
+  openai: {
+    name: 'OpenAI',
+    css: {
+      '--bg':'#0d0d0d','--surface':'#171717','--border':'#2f2f2f',
+      '--text':'#ececec','--text-dim':'#9a9a9a','--accent':'#10a37f',
+      '--accent-glow':'rgba(16,163,127,0.3)','--code-bg':'rgba(154,154,154,0.12)',
+      '--pipe-bg':'rgba(16,163,127,0.08)','--pipe-border':'rgba(16,163,127,0.2)',
+    },
+    tiers: {
+      entry:'#10a37f', frontend:'#5bb5e6', ir:'#b48eda', codegen:'#e6b44c',
+      runtime:'#ef6461', lint:'#e48bc2', driver:'#4cc9a0',
+      data:'#10a37f', api:'#e6b44c', ui:'#e48bc2', infra:'#9a9a9a',
+      util:'#9a9a9a', test:'#4cc9a0', config:'#b48eda',
+    },
+    canvas: {
+      grid:'rgba(47,47,47,0.4)', tierLabel:'rgba(154,154,154,0.3)',
+      edgeDim:'rgba(47,47,47,0.2)', edgeNormal:'rgba(47,47,47,0.55)',
+      edgeLabelDim:'rgba(154,154,154,0.35)', edgeLabelHi:'rgba(154,154,154,0.8)',
+      lineCountDim:'rgba(154,154,154,0.6)', lineCountHi:'rgba(236,236,236,0.8)',
+      barTrack:'rgba(154,154,154,0.15)', labelHi:'#ffffff',
+    },
+    swatch:['#0d0d0d','#10a37f','#5bb5e6','#ef6461'],
+  },
+};
+
+let T = THEMES.dark;
+let currentThemeName = 'dark';
+
+// ── Project Data (populated per-codebase) ─────────────
+
+const modules = [{"id": "plugin-manifest", "label": "plugin.json", "tier": "entry", "lines": 22, "x": 60, "y": 120, "w": 150, "h": 60, "desc": "Plugin manifest (name, version, hooks ref)", "details": {"types": [], "functions": [], "imports": ["hooks.json"], "notes": "The root manifest Claude Code reads to register this plugin. Declares version, description, hooks path, author, repository, license, and keywords. Component paths (commands, agents, skills) use defaults — never redeclare."}}, {"id": "marketplace-manifest", "label": "marketplace.json", "tier": "entry", "lines": 28, "x": 60, "y": 210, "w": 150, "h": 60, "desc": "Marketplace entry for distribution", "details": {"types": [], "functions": [], "imports": ["plugin.json"], "notes": "Registered when users run /plugin marketplace add juxstin1/archmap-plugin. Lists the archmap plugin with its own version, author, homepage, and keywords."}}, {"id": "archmap-json", "label": ".archmap.json", "tier": "config", "lines": 30, "x": 60, "y": 300, "w": 150, "h": 60, "desc": "Per-project configuration (exclude, tiers, output, theme)", "details": {"types": [], "functions": [], "imports": [], "notes": "Optional, placed in each consumer's project root. Controls exploration excludes, tier overrides, pinned modules, output paths, default theme, and hooks.sessionStart opt-out. Every field has a sensible default."}}, {"id": "cmd-archmap", "label": "/archmap", "tier": "api", "lines": 246, "x": 280, "y": 90, "w": 160, "h": 60, "desc": "Generate a full architecture map from scratch", "details": {"types": [], "functions": ["Phase 0: load config", "Phase 1: dispatch explorer", "Phase 2: layout", "Phase 3: substitute template", "Phase 4: write HTML + markdown"], "imports": ["explorer agent", "template.html", ".archmap.json"], "notes": "Entry point of the whole pipeline. Reads .archmap.json, dispatches the explorer agent for full codebase analysis, lays modules by tier, substitutes the HTML template with escaped data, writes docs/architecture.html and docs/architecture-map.md atomically."}}, {"id": "cmd-repair", "label": "/archmap:repair", "tier": "api", "lines": 221, "x": 280, "y": 180, "w": 160, "h": 60, "desc": "Detect and surgically fix stale / broken maps", "details": {"types": [], "functions": ["extract map state", "scan for drift", "patch staleness", "preserve user notes"], "imports": ["repair agent", "template.html"], "notes": "Parses the embedded JS variables in docs/architecture.html, dispatches the repair agent in scan mode, diffs results against existing modules/edges, patches staleness / layout / details / integrity issues. Pinned modules are never removed or re-tiered. User-customised details.notes are preserved."}}, {"id": "cmd-focus", "label": "/archmap:focus", "tier": "api", "lines": 178, "x": 280, "y": 270, "w": 160, "h": 60, "desc": "Deep-dive and repair a specific module", "details": {"types": [], "functions": ["find target module", "re-explore deeply", "update module + edges"], "imports": ["repair agent", "template.html"], "notes": "Same repair intelligence as :repair but scoped to a single module. Re-explores that module in depth, updates its types / functions / edges, and patches the map in-place."}}, {"id": "cmd-diff", "label": "/archmap:diff", "tier": "api", "lines": 172, "x": 280, "y": 360, "w": 160, "h": 60, "desc": "Drift report (read-only, never modifies the map)", "details": {"types": [], "functions": ["lightweight re-explore", "compare", "report drift"], "imports": ["repair agent"], "notes": "Read-only comparison between the current codebase and the existing map. Shows added / removed modules, new / broken dependencies, tier changes. Outputs a verdict: current, slightly stale, or needs repair. Does NOT touch docs/architecture.html."}}, {"id": "agent-explorer", "label": "explorer agent", "tier": "driver", "lines": 198, "x": 500, "y": 100, "w": 160, "h": 60, "desc": "Full codebase exploration from scratch", "details": {"types": [], "functions": ["discover source files", "extract types / functions", "infer dependencies", "infer data flow pipeline"], "imports": [], "notes": "Dispatched only by /archmap. Thoroughness: very thorough. Reports every module's path, types, public functions, internal imports, and role. Caps module count at 80 for large monorepos; honours .archmap.json excludes."}}, {"id": "agent-repair", "label": "repair agent", "tier": "driver", "lines": 258, "x": 500, "y": 220, "w": 160, "h": 60, "desc": "Targeted re-exploration for repair / focus / diff", "details": {"types": [], "functions": ["scan mode: check everything for drift", "focus mode: deep-dive one module"], "imports": [], "notes": "Two modes. Scan mode verifies every module's files still exist and picks up new files in mapped tiers. Focus mode narrows to a single target and returns a full re-profile. Shared by /archmap:repair, /archmap:focus, and /archmap:diff."}}, {"id": "skill-arch", "label": "architecture", "tier": "lint", "lines": 82, "x": 500, "y": 340, "w": 160, "h": 60, "desc": "Auto-activating skill for architecture Q&A", "details": {"types": [], "functions": ["detect arch questions", "read map data", "answer from map"], "imports": ["template.html"], "notes": "Triggers on phrases like 'how does this codebase work?' or 'what is the architecture of X'. Answers from existing docs/architecture.html + docs/architecture-map.md rather than re-exploring the codebase."}}, {"id": "template-html", "label": "archmap-template.html", "tier": "runtime", "lines": 720, "x": 720, "y": 180, "w": 180, "h": 80, "desc": "Self-contained HTML canvas visualization", "details": {"types": ["modules[]", "edges[]", "THEMES{dark,light,claude,openai}"], "functions": ["applyTheme()", "draw()", "drawModule()", "drawEdge()", "edgePoint()", "hitTest()", "showDetail()", "exportMarkdown()", "esc()", "safeColor()"], "imports": [], "notes": "The canvas target of template substitution. Pan, zoom, click-to-inspect. Four theme presets. Markdown export. No CDN, no external scripts, no fonts. XSS-hardened: every project-supplied string routes through esc() before innerHTML, color values through safeColor()."}}, {"id": "hooks-json", "label": "hooks.json", "tier": "infra", "lines": 28, "x": 940, "y": 100, "w": 160, "h": 60, "desc": "SessionStart + PostToolUse hook wiring", "details": {"types": [], "functions": [], "imports": ["detect-unmapped.sh", "flag-stale-modules.sh"], "notes": "Wires the two hook scripts. SessionStart fires on session open; PostToolUse fires on Write|Edit. Both scripts receive payloads via stdin per the Claude Code hook spec."}}, {"id": "hook-detect", "label": "detect-unmapped.sh", "tier": "infra", "lines": 105, "x": 940, "y": 210, "w": 160, "h": 60, "desc": "SessionStart: missing / stale map detection", "details": {"types": [], "functions": ["map_mtime()", "check_git_staleness()"], "imports": [".archmap.json"], "notes": "Runs on every session start. Uses git ls-files when available (fast, gitignore-aware) and falls back to depth-capped find otherwise. Honours .archmap.json output.html override and the hooks.sessionStart: false opt-out. set -euo pipefail; exits 0 on every failure path."}}, {"id": "hook-flag", "label": "flag-stale-modules.sh", "tier": "infra", "lines": 89, "x": 940, "y": 320, "w": 160, "h": 60, "desc": "PostToolUse: flag edits of mapped files", "details": {"types": [], "functions": [], "imports": [".archmap.json"], "notes": "Reads the tool payload from stdin, extracts file_path via jq (or a conservative regex fallback), and searches the map's modules block with grep -F for literal-match safety. Scoped between the 'Project Data' and 'Theme Engine' anchor comments so it can't false-match on CSS or comment text."}}];
+
+const edges = [{"from": "plugin-manifest", "to": "cmd-archmap", "label": "declares"}, {"from": "plugin-manifest", "to": "cmd-repair", "label": "declares"}, {"from": "plugin-manifest", "to": "cmd-focus", "label": "declares"}, {"from": "plugin-manifest", "to": "cmd-diff", "label": "declares"}, {"from": "plugin-manifest", "to": "hooks-json", "label": "wires"}, {"from": "marketplace-manifest", "to": "plugin-manifest", "label": "distributes"}, {"from": "archmap-json", "to": "cmd-archmap", "label": "configures"}, {"from": "archmap-json", "to": "hook-detect", "label": "configures"}, {"from": "archmap-json", "to": "hook-flag", "label": "configures"}, {"from": "cmd-archmap", "to": "agent-explorer", "label": "dispatches"}, {"from": "cmd-repair", "to": "agent-repair", "label": "dispatches"}, {"from": "cmd-focus", "to": "agent-repair", "label": "dispatches"}, {"from": "cmd-diff", "to": "agent-repair", "label": "dispatches"}, {"from": "cmd-archmap", "to": "template-html", "label": "writes"}, {"from": "cmd-repair", "to": "template-html", "label": "patches"}, {"from": "cmd-focus", "to": "template-html", "label": "patches"}, {"from": "skill-arch", "to": "template-html", "label": "reads"}, {"from": "hooks-json", "to": "hook-detect", "label": "SessionStart"}, {"from": "hooks-json", "to": "hook-flag", "label": "PostToolUse"}, {"from": "hook-detect", "to": "template-html", "label": "checks mtime"}, {"from": "hook-flag", "to": "template-html", "label": "searches"}];
+
+const tierLabels = [{"label": "MANIFESTS / CONFIG", "x": 70, "y": 60}, {"label": "COMMANDS", "x": 310, "y": 60}, {"label": "AGENTS / SKILL", "x": 510, "y": 60}, {"label": "RUNTIME", "x": 740, "y": 60}, {"label": "HOOKS", "x": 965, "y": 60}];
+
+const pipelineSteps = [{"type": "label", "text": "User runs /archmap"}, {"type": "arrow", "text": "Load .archmap.json"}, {"type": "label", "text": "Dispatch explorer agent"}, {"type": "arrow", "text": "Modules + edges + tiers"}, {"type": "label", "text": "Substitute HTML template"}, {"type": "arrow", "text": "Write docs/architecture.html"}, {"type": "label", "text": "Emit docs/architecture-map.md"}];
+
+const legendItems = [{"tier": "entry", "label": "Manifests"}, {"tier": "config", "label": "Config"}, {"tier": "api", "label": "Slash commands"}, {"tier": "driver", "label": "Agents"}, {"tier": "lint", "label": "Skills"}, {"tier": "runtime", "label": "HTML template"}, {"tier": "infra", "label": "Hooks"}];
+
+// ── Theme Engine ──────────────────────────────────────
+
+function tierColor(tier) { return T.tiers[tier] || T.tiers.entry; }
+
+function applyTheme(name) {
+  T = THEMES[name];
+  currentThemeName = name;
+  const root = document.documentElement;
+  for (const [k, v] of Object.entries(T.css)) root.style.setProperty(k, v);
+  modules.forEach(m => { m.color = tierColor(m.tier); });
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.theme === name);
+  });
+  if (selectedModule) {
+    const m = modules.find(mod => mod.id === selectedModule);
+    if (m) showDetail(m);
+  } else { showDefaultSidebar(); }
+  draw();
+  try { localStorage.setItem('archmap-theme', name); } catch {}
+}
+
+function buildThemePicker() {
+  const picker = document.getElementById('theme-picker');
+  for (const [key, theme] of Object.entries(THEMES)) {
+    const btn = document.createElement('button');
+    btn.className = 'theme-btn'; btn.dataset.theme = key; btn.title = theme.name;
+    btn.onclick = () => applyTheme(key);
+    const [tl, tr, bl, br] = theme.swatch;
+    btn.innerHTML = `
+      <div class="swatch-tl" style="background:${tl}"></div>
+      <div class="swatch-tr" style="background:${tr}"></div>
+      <div class="swatch-bl" style="background:${bl}"></div>
+      <div class="swatch-br" style="background:${br}"></div>`;
+    picker.appendChild(btn);
+  }
+}
+
+// ── Canvas Setup ──────────────────────────────────────
+
+const canvas = document.getElementById('graph');
+const ctx = canvas.getContext('2d');
+let dpr = window.devicePixelRatio || 1;
+let viewX = 0, viewY = 0, viewScale = 1;
+let isDragging = false, dragStartX, dragStartY;
+let hoveredModule = null, selectedModule = null;
+let showEdgeLabels = true, showAllLabels = true;
+
+function resize() {
+  const container = document.getElementById('canvas-container');
+  const rect = container.getBoundingClientRect();
+  canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
+  canvas.style.width = rect.width + 'px'; canvas.style.height = rect.height + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); draw();
+}
+window.addEventListener('resize', resize);
+
+function screenToWorld(sx, sy) {
+  return { x: (sx - viewX) / viewScale, y: (sy - viewY) / viewScale };
+}
+
+// ── Drawing ───────────────────────────────────────────
+
+function draw() {
+  const rect = canvas.getBoundingClientRect();
+  const W = rect.width, H = rect.height;
+  ctx.fillStyle = T.css['--bg']; ctx.fillRect(0, 0, W, H);
+  ctx.save(); ctx.translate(viewX, viewY); ctx.scale(viewScale, viewScale);
+  drawGrid(W, H); drawTierLabels();
+  edges.forEach(e => drawEdge(e));
+  modules.forEach(m => drawModule(m));
+  ctx.restore();
+}
+
+function drawGrid(W, H) {
+  const tl = screenToWorld(0, 0), br = screenToWorld(W, H);
+  const step = 50;
+  ctx.strokeStyle = T.canvas.grid; ctx.lineWidth = 0.5;
+  const startX = Math.floor(tl.x / step) * step, startY = Math.floor(tl.y / step) * step;
+  for (let x = startX; x < br.x; x += step) { ctx.beginPath(); ctx.moveTo(x, tl.y); ctx.lineTo(x, br.y); ctx.stroke(); }
+  for (let y = startY; y < br.y; y += step) { ctx.beginPath(); ctx.moveTo(tl.x, y); ctx.lineTo(br.x, y); ctx.stroke(); }
+}
+
+function drawTierLabels() {
+  ctx.font = '11px "Segoe UI"'; ctx.fillStyle = T.canvas.tierLabel;
+  tierLabels.forEach(t => ctx.fillText(t.label, t.x, t.y));
+}
+
+function drawModule(m) {
+  const isHovered = hoveredModule === m.id, isSelected = selectedModule === m.id;
+  if (isHovered || isSelected) { ctx.shadowColor = m.color + '40'; ctx.shadowBlur = 20; }
+  const alpha = isHovered ? 'cc' : isSelected ? 'aa' : '18';
+  ctx.fillStyle = m.color + alpha;
+  ctx.strokeStyle = isSelected ? m.color : isHovered ? m.color + '88' : m.color + '44';
+  ctx.lineWidth = isSelected ? 2 : 1;
+  roundRect(m.x, m.y, m.w, m.h, 8); ctx.fill(); ctx.stroke();
+  ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
+
+  ctx.fillStyle = isHovered || isSelected ? T.canvas.labelHi : m.color;
+  ctx.font = 'bold 13px "Cascadia Code", "Fira Code", monospace';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(m.label, m.x + m.w / 2, m.y + m.h / 2 - 8);
+
+  ctx.fillStyle = isHovered || isSelected ? T.canvas.lineCountHi : T.canvas.lineCountDim;
+  ctx.font = '10px "Segoe UI"';
+  ctx.fillText(m.subtitle || (m.lines + ' lines'), m.x + m.w / 2, m.y + m.h / 2 + 8);
+
+  const maxLines = Math.max(...modules.map(mod => mod.lines));
+  const barW = m.w - 20, barH = 3, barX = m.x + 10, barY = m.y + m.h - 10;
+  ctx.fillStyle = T.canvas.barTrack; roundRect(barX, barY, barW, barH, 1.5); ctx.fill();
+  ctx.fillStyle = m.color + '66'; roundRect(barX, barY, (m.lines / maxLines) * barW, barH, 1.5); ctx.fill();
+  ctx.textAlign = 'left';
+}
+
+function drawEdge(e) {
+  const from = modules.find(m => m.id === e.from), to = modules.find(m => m.id === e.to);
+  if (!from || !to) return;
+  const isHighlighted = selectedModule === e.from || selectedModule === e.to;
+  const isDimmed = selectedModule && !isHighlighted;
+  const fromCx = from.x + from.w / 2, fromCy = from.y + from.h / 2;
+  const toCx = to.x + to.w / 2, toCy = to.y + to.h / 2;
+  const fp = edgePoint(from, toCx, toCy), tp = edgePoint(to, fromCx, fromCy);
+  const mx = (fp.x + tp.x) / 2, my = (fp.y + tp.y) / 2;
+  const dx = tp.x - fp.x, dy = tp.y - fp.y;
+  const cx = mx + dy * 0.1, cy = my - dx * 0.1;
+
+  ctx.beginPath(); ctx.moveTo(fp.x, fp.y); ctx.quadraticCurveTo(cx, cy, tp.x, tp.y);
+  if (isDimmed) { ctx.strokeStyle = T.canvas.edgeDim; ctx.lineWidth = 0.5; }
+  else if (isHighlighted) { ctx.strokeStyle = from.color + '55'; ctx.lineWidth = 1.5; }
+  else { ctx.strokeStyle = T.canvas.edgeNormal; ctx.lineWidth = 0.8; }
+  ctx.stroke();
+
+  const angle = Math.atan2(tp.y - cy, tp.x - cx), sz = 6;
+  ctx.beginPath(); ctx.moveTo(tp.x, tp.y);
+  ctx.lineTo(tp.x - sz * Math.cos(angle - 0.4), tp.y - sz * Math.sin(angle - 0.4));
+  ctx.lineTo(tp.x - sz * Math.cos(angle + 0.4), tp.y - sz * Math.sin(angle + 0.4));
+  ctx.closePath(); ctx.fillStyle = ctx.strokeStyle; ctx.fill();
+
+  if (showEdgeLabels && !isDimmed && e.label) {
+    const lx = (fp.x + tp.x) / 2 + (tp.y - fp.y) * 0.05;
+    const ly = (fp.y + tp.y) / 2 - (tp.x - fp.x) * 0.05;
+    ctx.font = '9px "Segoe UI"';
+    ctx.fillStyle = isHighlighted ? T.canvas.edgeLabelHi : T.canvas.edgeLabelDim;
+    ctx.textAlign = 'center'; ctx.fillText(e.label, lx, ly - 4); ctx.textAlign = 'left';
+  }
+}
+
+function edgePoint(mod, targetX, targetY) {
+  const cx = mod.x + mod.w / 2, cy = mod.y + mod.h / 2;
+  const dx = targetX - cx, dy = targetY - cy;
+  // Zero-guard: if the target is exactly at the module's center
+  // (e.g. overlapping boxes), return the center to avoid NaN.
+  if (dx === 0 && dy === 0) return { x: cx, y: cy };
+  const hw = mod.w / 2, hh = mod.h / 2;
+  const tx = dx !== 0 ? hw / Math.abs(dx) : Infinity;
+  const ty = dy !== 0 ? hh / Math.abs(dy) : Infinity;
+  const t = Math.min(tx, ty);
+  return { x: cx + dx * t, y: cy + dy * t };
+}
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r); ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r); ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r); ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r); ctx.closePath();
+}
+
+// ── Interaction ───────────────────────────────────────
+
+function hitTest(sx, sy) {
+  const p = screenToWorld(sx, sy);
+  for (let i = modules.length - 1; i >= 0; i--) {
+    const m = modules[i];
+    if (p.x >= m.x && p.x <= m.x + m.w && p.y >= m.y && p.y <= m.y + m.h) return m;
+  }
+  return null;
+}
+
+canvas.addEventListener('mousedown', e => {
+  isDragging = true; dragStartX = e.clientX - viewX; dragStartY = e.clientY - viewY;
+  canvas.style.cursor = 'grabbing';
+});
+
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+  if (isDragging) { viewX = e.clientX - dragStartX; viewY = e.clientY - dragStartY; draw(); return; }
+  const hit = hitTest(sx, sy), newHovered = hit ? hit.id : null;
+  if (newHovered !== hoveredModule) { hoveredModule = newHovered; canvas.style.cursor = hit ? 'pointer' : 'grab'; draw(); }
+});
+
+canvas.addEventListener('mouseup', e => {
+  if (isDragging) {
+    const dx = Math.abs(e.clientX - (dragStartX + viewX)), dy = Math.abs(e.clientY - (dragStartY + viewY));
+    if (dx < 3 && dy < 3) {
+      const rect = canvas.getBoundingClientRect();
+      const hit = hitTest(e.clientX - rect.left, e.clientY - rect.top);
+      if (hit) { selectedModule = hit.id; showDetail(hit); }
+      else { selectedModule = null; showDefaultSidebar(); }
+    }
+  }
+  isDragging = false; canvas.style.cursor = hoveredModule ? 'pointer' : 'grab'; draw();
+});
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const oldScale = viewScale;
+  viewScale = Math.max(0.3, Math.min(4, viewScale + (-e.deltaY * 0.001) * viewScale));
+  viewX = mx - (mx - viewX) * (viewScale / oldScale);
+  viewY = my - (my - viewY) * (viewScale / oldScale);
+  draw();
+}, { passive: false });
+
+// ── Sidebar ───────────────────────────────────────────
+
+// HTML escape helper — every string originating from project data
+// (module labels, descriptions, notes, edge labels, etc.) must be
+// passed through this before being interpolated into innerHTML.
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+// CSS color sanitizer — only allow colors that look like hex or
+// a short allowlist of CSS color keywords, to keep untrusted data
+// out of `style="color:..."` contexts.
+function safeColor(c) {
+  if (typeof c !== 'string') return 'currentColor';
+  return /^#[0-9a-fA-F]{3,8}$|^rgb(a)?\([^)]*\)$|^var\(--[\w-]+\)$/.test(c.trim())
+    ? c : 'currentColor';
+}
+
+function showDetail(m) {
+  const d = m.details || {};
+  const incoming = edges.filter(e => e.to === m.id);
+  const outgoing = edges.filter(e => e.from === m.id);
+  const maturity = Math.min(5, Math.max(1, Math.round(m.lines / 400)));
+  const mColor = safeColor(m.color);
+
+  let html = `
+    <div class="detail-title" style="color:${mColor}">${esc(m.label)}</div>
+    <div class="detail-subtitle">${esc(m.desc || '')} &middot; ${m.lines | 0} lines</div>
+    <div class="maturity-bar">
+      ${[1,2,3,4,5].map(i => `<div class="maturity-seg" style="background:${i <= maturity ? mColor : 'var(--border)'}"></div>`).join('')}
+    </div>
+    <div style="font-size:10px; color:var(--text-dim); margin-bottom:16px;">complexity: ${esc(['minimal','low','moderate','high','very high'][maturity-1])}</div>`;
+
+  const sections = [
+    ['Types', d.types], ['Key Functions', d.functions], ['Imports', d.imports],
+  ];
+  sections.forEach(([title, items]) => {
+    if (items && items.length) html += `<div class="detail-section"><h3>${esc(title)}</h3><ul>${items.map(t => `<li><code>${esc(t)}</code></li>`).join('')}</ul></div>`;
+  });
+
+  if (incoming.length) {
+    html += `<div class="detail-section"><h3>Used By</h3><ul>${incoming.map(e => {
+      const f = modules.find(mod => mod.id === e.from);
+      if (!f) return '';
+      return `<li><span style="color:${safeColor(f.color)}">${esc(f.label)}</span> <span style="color:var(--text-dim);font-size:11px">(${esc(e.label || '')})</span></li>`;
+    }).join('')}</ul></div>`;
+  }
+  if (outgoing.length) {
+    html += `<div class="detail-section"><h3>Depends On</h3><ul>${outgoing.map(e => {
+      const t = modules.find(mod => mod.id === e.to);
+      if (!t) return '';
+      return `<li><span style="color:${safeColor(t.color)}">${esc(t.label)}</span> <span style="color:var(--text-dim);font-size:11px">(${esc(e.label || '')})</span></li>`;
+    }).join('')}</ul></div>`;
+  }
+
+  if (d.notes) html += `<div class="detail-section"><h3>Notes</h3><p style="font-size:12px; line-height:1.5; color:var(--text-dim); white-space:pre-line;">${esc(d.notes)}</p></div>`;
+
+  document.getElementById('detail-content').innerHTML = html;
+}
+
+function legendDotsHtml() {
+  return legendItems.map(li => `<div class="legend-item"><div class="legend-dot" style="background:${safeColor(tierColor(li.tier))}"></div> ${esc(li.label)}</div>`).join('');
+}
+
+function pipelineHtml() {
+  return pipelineSteps.map(s =>
+    s.type === 'label' ? `<div class="pipe-step"><span class="pipe-label">${esc(s.text)}</span></div>`
+                       : `<div class="pipe-step"><span class="pipe-arrow">&#9660;</span> ${esc(s.text)}</div>`
+  ).join('');
+}
+
+function showDefaultSidebar() {
+  document.getElementById('detail-content').innerHTML = `
+    <p style="color: var(--text-dim); font-size: 13px;">Click a module to inspect it.<br><br>Drag to pan, scroll to zoom.</p>
+    <div class="legend">${legendDotsHtml()}</div>
+    <div id="pipeline">
+      <h2 style="font-size:12px; color:var(--text-dim); margin-bottom:8px;">DATA FLOW</h2>
+      ${pipelineHtml()}
+    </div>`;
+}
+
+// ── Controls ──────────────────────────────────────────
+
+function resetView() { viewX = 30; viewY = 30; viewScale = 1; selectedModule = null; showDefaultSidebar(); draw(); }
+function toggleEdgeMode() { showEdgeLabels = !showEdgeLabels; draw(); }
+function toggleLabels() { showAllLabels = !showAllLabels; draw(); }
+
+function exportMarkdown() {
+  // Read project name from the data attribute rather than embedding
+  // it as a JS string literal — avoids injection via quotes/newlines
+  // in the project name itself.
+  const projectName = document.body.dataset.projectName || 'Project';
+  const totalLines = modules.reduce((sum, m) => sum + m.lines, 0);
+  const totalFiles = modules.length;
+  const totalLayers = [...new Set(modules.map(m => m.tier))].length;
+
+  let md = `# ${projectName} — Architecture Map\n\n`;
+  md += `**Generated:** ${new Date().toISOString().split('T')[0]}\n\n`;
+
+  // Stats
+  md += `## Overview\n\n`;
+  md += `- **Total Files:** ${totalFiles}\n`;
+  md += `- **Total Lines:** ~${totalLines.toLocaleString()}\n`;
+  md += `- **Architecture Layers:** ${totalLayers}\n`;
+  md += `- **Dependencies:** ${edges.length}\n\n`;
+
+  // Data Flow Pipeline
+  md += `## Data Flow Pipeline\n\n\`\`\`\n`;
+  pipelineSteps.forEach((step, i) => {
+    if (step.type === 'label') {
+      md += `${step.text}\n`;
+    } else {
+      md += `  ↓ ${step.text}\n`;
+    }
+  });
+  md += `\`\`\`\n\n`;
+
+  // Architecture Layers
+  md += `## Architecture Layers\n\n`;
+  const tierGroups = {};
+  modules.forEach(m => {
+    if (!tierGroups[m.tier]) tierGroups[m.tier] = [];
+    tierGroups[m.tier].push(m);
+  });
+
+  const tierNames = {
+    'entry': 'Entry Points',
+    'frontend': 'Frontend',
+    'ir': 'IR / AST',
+    'codegen': 'Code Generation',
+    'runtime': 'Runtime',
+    'lint': 'Analysis / Lint',
+    'driver': 'Driver',
+    'data': 'Data',
+    'api': 'API Layer',
+    'ui': 'UI Components',
+    'infra': 'Infrastructure',
+    'util': 'Utilities',
+    'test': 'Testing',
+    'config': 'Configuration'
+  };
+
+  Object.entries(tierGroups).forEach(([tier, mods]) => {
+    md += `### ${tierNames[tier] || tier}\n\n`;
+    mods.forEach(m => {
+      md += `- **${m.label}** (${m.lines} lines) — ${m.desc}\n`;
+    });
+    md += `\n`;
+  });
+
+  // Detailed Module Analysis
+  md += `## Module Details\n\n`;
+
+  // Sort a copy — never mutate the live `modules` array, which
+  // the canvas renderer continues to iterate after export.
+  const tierOrder = ['entry', 'api', 'data', 'driver', 'codegen', 'util', 'frontend', 'ir', 'runtime', 'lint', 'ui', 'infra', 'test', 'config'];
+  const sortedModules = [...modules].sort((a, b) => {
+    const tierDiff = tierOrder.indexOf(a.tier) - tierOrder.indexOf(b.tier);
+    if (tierDiff !== 0) return tierDiff;
+    return a.y - b.y;
+  });
+
+  sortedModules.forEach(m => {
+    const d = m.details || {};
+    const incoming = edges.filter(e => e.to === m.id);
+    const outgoing = edges.filter(e => e.from === m.id);
+
+    md += `### ${m.label}\n\n`;
+    md += `**Layer:** ${tierNames[m.tier] || m.tier}  \n`;
+    md += `**Size:** ${m.lines} lines  \n`;
+    md += `**Description:** ${m.desc}\n\n`;
+
+    if (d.types && d.types.length) {
+      md += `**Types:**\n`;
+      d.types.forEach(t => md += `- \`${t}\`\n`);
+      md += `\n`;
+    }
+
+    if (d.functions && d.functions.length) {
+      md += `**Key Functions:**\n`;
+      d.functions.forEach(f => md += `- \`${f}\`\n`);
+      md += `\n`;
+    }
+
+    if (d.imports && d.imports.length) {
+      md += `**Imports:**\n`;
+      d.imports.forEach(i => md += `- \`${i}\`\n`);
+      md += `\n`;
+    }
+
+    if (incoming.length) {
+      md += `**Used By:**\n`;
+      incoming.forEach(e => {
+        const from = modules.find(mod => mod.id === e.from);
+        if (from) md += `- ${from.label} (${e.label})\n`;
+      });
+      md += `\n`;
+    }
+
+    if (outgoing.length) {
+      md += `**Depends On:**\n`;
+      outgoing.forEach(e => {
+        const to = modules.find(mod => mod.id === e.to);
+        if (to) md += `- ${to.label} (${e.label})\n`;
+      });
+      md += `\n`;
+    }
+
+    if (d.notes) {
+      md += `**Notes:**  \n${d.notes}\n\n`;
+    }
+
+    md += `---\n\n`;
+  });
+
+  // Dependency Graph — skip edges whose endpoints have been removed.
+  md += `## Dependency Graph\n\n`;
+  edges.forEach(e => {
+    const from = modules.find(m => m.id === e.from);
+    const to = modules.find(m => m.id === e.to);
+    if (!from || !to) return;
+    md += `- **${from.label}** → **${to.label}** (${e.label})\n`;
+  });
+
+  // Download
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'architecture-map.md';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ── Init ──────────────────────────────────────────────
+
+buildThemePicker();
+const saved = (() => { try { return localStorage.getItem('archmap-theme'); } catch { return null; } })();
+applyTheme(saved && THEMES[saved] ? saved : 'dark');
+viewX = 30; viewY = 30;
+resize();
+</script>
+</body>
+</html>
