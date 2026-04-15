@@ -30,7 +30,7 @@ Read the target HTML file (default `docs/architecture.html`, or the path in `.ar
 - `const layoutOverrides = {...}`
 - `const history = [...]` — the existing history array (empty on first run)
 
-If the target file doesn't exist, tell the user to run `/archmap` first and exit.
+If the target file doesn't exist, tell the user to run `/archmap:generate` first and exit.
 
 ### Phase 2: Resolve version label
 
@@ -69,7 +69,7 @@ The clone is important — subsequent edits (e.g., `/archmap:repair`) must not m
    - Move the oldest entries into `<spillPath>/<version>.json` files (one per snapshot)
    - Keep only the newest N entries inline
    - Preserve the self-contained guarantee for users who don't want spill: set `history.maxInlineSnapshots: 9999` (or a very high number) in `.archmap.json`.
-3. Rewrite the HTML using the same template-substitution approach as `/archmap` Phase 3:
+3. Rewrite the HTML using the same template-substitution approach as `/archmap:generate` Phase 3:
    - Read `${CLAUDE_PLUGIN_ROOT}/templates/archmap-template.html`
    - Substitute every placeholder, including `{{HISTORY_JSON}}` with `safeJson(history)`
    - Write atomically (`.tmp` then `mv`)
@@ -113,8 +113,8 @@ Tell the user:
 
 ## Error handling
 
-- Missing map file → tell the user to run `/archmap` first
-- Parse failure on an existing HTML → suggest `rm docs/architecture.html && /archmap` to regenerate
+- Missing map file → tell the user to run `/archmap:generate` first
+- Parse failure on an existing HTML → suggest `rm docs/architecture.html && /archmap:generate` to regenerate
 - Disk write failure on spill → abort; do not rewrite the HTML (atomic all-or-nothing)
 - Duplicate `--name` → error, list existing versions
 

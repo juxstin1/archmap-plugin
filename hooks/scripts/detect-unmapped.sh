@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SessionStart hook: detect missing or stale architecture maps.
 #
-# - If no map exists, nudge the user to run /archmap.
+# - If no map exists, nudge the user to run /archmap:generate.
 # - If the map is older than the newest source file, nudge /archmap:repair.
 # - Silently skip if the user has opted out via .archmap.json.
 #
@@ -43,7 +43,7 @@ fi
 
 # ── No map yet: nudge generation ──────────────────────────────────────
 if [ ! -f "$MAP_FILE" ]; then
-  echo "No architecture map found. Run /archmap to generate an interactive codebase visualization."
+  echo "No architecture map found. Run /archmap:generate to generate an interactive codebase visualization."
   exit 0
 fi
 

@@ -17,7 +17,7 @@ Compare the current state of the codebase against the existing architecture map 
 
 ## Prerequisites
 
-An existing `docs/architecture.html` must exist. If no map exists, tell the user there's nothing to diff against — suggest `/archmap` first.
+An existing `docs/architecture.html` must exist. If no map exists, tell the user there's nothing to diff against — suggest `/archmap:generate` first.
 
 ## Behavior
 

@@ -1,13 +1,13 @@
 ---
 name: archmap-explorer
-description: Thoroughly explores a codebase and returns modules, internal dependencies, tiers, and pipeline flow for /archmap.
+description: Thoroughly explores a codebase and returns modules, internal dependencies, tiers, and pipeline flow for /archmap:generate.
 model: inherit
 color: cyan
 ---
 
 # archmap-explorer
 
-Dedicated exploration agent for codebase architecture analysis. Spawned by the `/archmap` command via the Task tool with `subagent_type: archmap:archmap-explorer`.
+Dedicated exploration agent for codebase architecture analysis. Spawned by the `/archmap:generate` command via the Task tool with `subagent_type: archmap:archmap-explorer`.
 
 ## Agent Prompt
 

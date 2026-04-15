@@ -16,7 +16,7 @@ This runs Claude Code with your working copy loaded as a live plugin. Any edit t
 
 See [the Repository layout section of the README](./README.md#repository-layout). Archmap is a Claude Code plugin: no build system, no package manager, no tests in the traditional sense. The components are:
 
-- **`commands/*.md`** — slash-command prompt definitions (`/archmap`, `/archmap:repair`, …)
+- **`commands/*.md`** — slash-command prompt definitions (`/archmap:generate`, `/archmap:repair`, …)
 - **`agents/*.md`** — prompts for dispatched Task agents
 - **`skills/architecture/SKILL.md`** — auto-activating skill for architecture Q&A
 - **`hooks/scripts/*.sh`** — bash scripts wired up via `hooks/hooks.json`
@@ -32,13 +32,13 @@ See [the Repository layout section of the README](./README.md#repository-layout)
 - **Canvas colors** come from the active theme (`applyTheme()`); never hardcode tier colors on modules.
 - **Tier keys** used in any module must exist in every theme's `tiers` object (`entry`, `frontend`, `ir`, `codegen`, `runtime`, `lint`, `driver`, `data`, `api`, `ui`, `infra`, `util`, `test`, `config`).
 - **Hook scripts** must start with `set -euo pipefail`, exit `0` on every failure path, and never hardcode paths — use `${CLAUDE_PLUGIN_ROOT}` in `hooks.json`.
-- **Template substitution is security-critical** — see the Phase 3 documentation in `commands/archmap.md` for the HTML-escape vs JSON-encode rules for each placeholder.
+- **Template substitution is security-critical** — see the Phase 3 documentation in `commands/generate.md` for the HTML-escape vs JSON-encode rules for each placeholder.
 
 ## Running and testing your changes
 
 Because this is a prompt-driven plugin, manual smoke testing is the primary QA path. Before opening a PR:
 
-1. Run `/archmap` against at least two different repos (a small script and a larger multi-language codebase) and confirm the HTML renders, modules have the right tiers, and the inspector works.
+1. Run `/archmap:generate` against at least two different repos (a small script and a larger multi-language codebase) and confirm the HTML renders, modules have the right tiers, and the inspector works.
 2. Run `/archmap:repair` after a small code change and confirm only the changed modules get touched.
 3. Run `/archmap:diff` and confirm the drift report is readable.
 4. For hook changes, smoke-test with a scratch repo and `bash hooks/scripts/*.sh < payload.json`.

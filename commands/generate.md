@@ -3,21 +3,21 @@ description: Generate an interactive 2D codebase architecture map and markdown e
 argument-hint: "[path] [--refresh]"
 ---
 
-# /archmap - Interactive Codebase Architecture Map
+# /archmap:generate — Interactive Codebase Architecture Map
 
 Generate an interactive 2D web visualization of any codebase's architecture with pan/zoom, module inspector, dependency edges, and 4 switchable themes (Dark, Light, Claude, OpenAI).
 
 ## Usage
 
 ```
-/archmap              # Full map of current project
-/archmap <path>       # Map a specific subdirectory or project
-/archmap --refresh    # Regenerate map for current project (re-explore)
+/archmap:generate              # Full map of current project
+/archmap:generate <path>       # Map a specific subdirectory or project
+/archmap:generate --refresh    # Regenerate map for current project (re-explore)
 ```
 
 ## Behavior
 
-When user runs `/archmap`:
+When user runs `/archmap:generate`:
 
 ### Phase 0: Load Configuration
 
@@ -164,7 +164,7 @@ From the exploration results, build the visualization data structures. Each modu
    - `{{PIPELINE_JSON}}` → `safeJson(pipelineSteps)` — pipeline steps
    - `{{LEGEND_JSON}}` → `safeJson(legendItems)` — legend items
    - `{{LAYOUT_JSON}}` → `safeJson(layoutData.positions || {})` — user-arranged position overrides loaded from `.archmap/layout.json` in Phase 0, or `{}` if absent
-   - `{{HISTORY_JSON}}` → `safeJson(history)` — version history array. For a fresh generation, seed this with one initial snapshot (version `v0.1`, note `"initial map"`) containing clones of the current `modules`/`edges`/`tierLabels`/`pipelineSteps`/`legendItems`/`layoutOverrides`. If re-running `/archmap` on an existing map, read its current `history` and append a new auto-versioned snapshot with note `"regenerated from scratch"`.
+   - `{{HISTORY_JSON}}` → `safeJson(history)` — version history array. For a fresh generation, seed this with one initial snapshot (version `v0.1`, note `"initial map"`) containing clones of the current `modules`/`edges`/`tierLabels`/`pipelineSteps`/`legendItems`/`layoutOverrides`. If re-running `/archmap:generate` on an existing map, read its current `history` and append a new auto-versioned snapshot with note `"regenerated from scratch"`.
 
    Never interpolate raw project-data strings directly into JS source. The template reads the project name from the `<body data-project-name="...">` attribute at runtime, so there is no need to embed it as a JS string literal.
 3. **Write** the result to `docs/architecture.html` in the project root (create `docs/` if needed). Write atomically: write to `docs/architecture.html.tmp` then rename, so a concurrent reader never sees a half-written file.
