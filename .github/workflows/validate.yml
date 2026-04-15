@@ -16,17 +16,49 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate plugin.json
+      - name: Validate plugin.json (shape)
         run: |
           jq empty .claude-plugin/plugin.json
           jq -e '.name and .version and .description' .claude-plugin/plugin.json > /dev/null
-          echo "plugin.json: ok"
+          echo "plugin.json: shape ok"
 
-      - name: Validate marketplace.json
+      - name: Validate marketplace.json (shape)
         run: |
           jq empty .claude-plugin/marketplace.json
           jq -e '.name and (.plugins | type == "array" and length > 0)' .claude-plugin/marketplace.json > /dev/null
-          echo "marketplace.json: ok"
+          echo "marketplace.json: shape ok"
+
+      - name: Set up Node (for ajv-cli)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install ajv-cli
+        run: npm install -g ajv-cli ajv-formats
+
+      - name: Validate plugin.json against JSON Schema
+        run: |
+          if ! ajv validate -s schemas/plugin.schema.json -d .claude-plugin/plugin.json --spec=draft2020 -c ajv-formats 2>&1 | tee /tmp/ajv-plugin.log; then
+            echo ""
+            echo "::error file=.claude-plugin/plugin.json::plugin.json failed schema validation"
+            echo "::notice::Common cause: declaring a default path like 'hooks: ./hooks/hooks.json'. Claude Code auto-loads default paths — only name custom/additional files in the manifest."
+            exit 1
+          fi
+
+      - name: Validate marketplace.json against JSON Schema
+        run: |
+          if ! ajv validate -s schemas/marketplace.schema.json -d .claude-plugin/marketplace.json --spec=draft2020 -c ajv-formats 2>&1 | tee /tmp/ajv-marketplace.log; then
+            echo "::error file=.claude-plugin/marketplace.json::marketplace.json failed schema validation"
+            exit 1
+          fi
+
+      - name: Validate example .archmap.json (if committed)
+        run: |
+          if [ -f .archmap.json ]; then
+            ajv validate -s schemas/archmap.schema.json -d .archmap.json --spec=draft2020 -c ajv-formats
+          else
+            echo "no .archmap.json in repo root — skipping schema validation"
+          fi
 
       - name: Plugin and marketplace versions must agree
         run: |

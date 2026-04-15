@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/juxstin1/archmap-plugin/main/schemas/archmap.schema.json",
+  "title": "Archmap project configuration",
+  "description": "Schema for .archmap.json — per-project configuration for the archmap Claude Code plugin. Drop one in your project root. All fields are optional; every field has a sensible default.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "exclude": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true,
+      "description": "Paths or globs the explorer agent skips during codebase exploration. Examples: node_modules, dist, vendor, .git."
+    },
+    "tiers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "enum": [
+          "entry", "frontend", "ir", "codegen", "runtime", "lint", "driver",
+          "data", "api", "ui", "infra", "util", "test", "config"
+        ]
+      },
+      "description": "Path-prefix → tier overrides. Keys are path prefixes (e.g. 'src/api/'); values are tier keys from the fixed vocabulary."
+    },
+    "pinned": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true,
+      "description": "Module IDs that /archmap:repair must never remove or re-tier, even if the repair agent suggests changes."
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "html": {
+          "type": "string",
+          "default": "docs/architecture.html",
+          "description": "Where /archmap writes the interactive HTML map. Hooks read this path to detect staleness."
+        },
+        "markdown": {
+          "type": "string",
+          "default": "docs/architecture-map.md",
+          "description": "Where /archmap writes the markdown export."
+        }
+      }
+    },
+    "theme": {
+      "type": "string",
+      "enum": ["dark", "light", "claude", "openai"],
+      "default": "dark",
+      "description": "Default theme applied when the HTML map opens for the first time."
+    },
+    "hooks": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sessionStart": {
+          "type": "boolean",
+          "default": true,
+          "description": "Set to false to silence the session-start staleness nudge."
+        }
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "respectOverrides": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true (default), /archmap reads the layout-override file and preserves user-arranged module positions."
+        },
+        "overridePath": {
+          "type": "string",
+          "default": ".archmap/layout.json",
+          "description": "Path to the layout-override file produced by the HTML UI's Save button."
+        }
+      }
+    }
+  }
+}
