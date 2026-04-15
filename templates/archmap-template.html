@@ -140,7 +140,7 @@
   .maturity-seg { height: 4px; border-radius: 2px; flex: 1; }
 </style>
 </head>
-<body>
+<body data-project-name="{{PROJECT_NAME}}">
 
 <div id="header">
   <h1><span>{{PROJECT_NAME}}</span> Architecture</h1>
@@ -434,10 +434,13 @@ function drawEdge(e) {
 function edgePoint(mod, targetX, targetY) {
   const cx = mod.x + mod.w / 2, cy = mod.y + mod.h / 2;
   const dx = targetX - cx, dy = targetY - cy;
+  // Zero-guard: if the target is exactly at the module's center
+  // (e.g. overlapping boxes), return the center to avoid NaN.
+  if (dx === 0 && dy === 0) return { x: cx, y: cy };
   const hw = mod.w / 2, hh = mod.h / 2;
-  let t = Infinity;
-  if (dx !== 0) { const tx = (dx > 0 ? hw : -hw) / dx; if (tx > 0) t = Math.min(t, tx); }
-  if (dy !== 0) { const ty = (dy > 0 ? hh : -hh) / dy; if (ty > 0) t = Math.min(t, ty); }
+  const tx = dx !== 0 ? hw / Math.abs(dx) : Infinity;
+  const ty = dy !== 0 ? hh / Math.abs(dy) : Infinity;
+  const t = Math.min(tx, ty);
   return { x: cx + dx * t, y: cy + dy * t };
 }
 
@@ -499,53 +502,74 @@ canvas.addEventListener('wheel', e => {
 
 // ── Sidebar ───────────────────────────────────────────
 
+// HTML escape helper — every string originating from project data
+// (module labels, descriptions, notes, edge labels, etc.) must be
+// passed through this before being interpolated into innerHTML.
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+// CSS color sanitizer — only allow colors that look like hex or
+// a short allowlist of CSS color keywords, to keep untrusted data
+// out of `style="color:..."` contexts.
+function safeColor(c) {
+  if (typeof c !== 'string') return 'currentColor';
+  return /^#[0-9a-fA-F]{3,8}$|^rgb(a)?\([^)]*\)$|^var\(--[\w-]+\)$/.test(c.trim())
+    ? c : 'currentColor';
+}
+
 function showDetail(m) {
   const d = m.details || {};
   const incoming = edges.filter(e => e.to === m.id);
   const outgoing = edges.filter(e => e.from === m.id);
   const maturity = Math.min(5, Math.max(1, Math.round(m.lines / 400)));
+  const mColor = safeColor(m.color);
 
   let html = `
-    <div class="detail-title" style="color:${m.color}">${m.label}</div>
-    <div class="detail-subtitle">${m.desc || ''} &middot; ${m.lines} lines</div>
+    <div class="detail-title" style="color:${mColor}">${esc(m.label)}</div>
+    <div class="detail-subtitle">${esc(m.desc || '')} &middot; ${m.lines | 0} lines</div>
     <div class="maturity-bar">
-      ${[1,2,3,4,5].map(i => `<div class="maturity-seg" style="background:${i <= maturity ? m.color : 'var(--border)'}"></div>`).join('')}
+      ${[1,2,3,4,5].map(i => `<div class="maturity-seg" style="background:${i <= maturity ? mColor : 'var(--border)'}"></div>`).join('')}
     </div>
-    <div style="font-size:10px; color:var(--text-dim); margin-bottom:16px;">complexity: ${['minimal','low','moderate','high','very high'][maturity-1]}</div>`;
+    <div style="font-size:10px; color:var(--text-dim); margin-bottom:16px;">complexity: ${esc(['minimal','low','moderate','high','very high'][maturity-1])}</div>`;
 
   const sections = [
     ['Types', d.types], ['Key Functions', d.functions], ['Imports', d.imports],
   ];
   sections.forEach(([title, items]) => {
-    if (items && items.length) html += `<div class="detail-section"><h3>${title}</h3><ul>${items.map(t => `<li><code>${t}</code></li>`).join('')}</ul></div>`;
+    if (items && items.length) html += `<div class="detail-section"><h3>${esc(title)}</h3><ul>${items.map(t => `<li><code>${esc(t)}</code></li>`).join('')}</ul></div>`;
   });
 
   if (incoming.length) {
     html += `<div class="detail-section"><h3>Used By</h3><ul>${incoming.map(e => {
       const f = modules.find(mod => mod.id === e.from);
-      return `<li><span style="color:${f.color}">${f.label}</span> <span style="color:var(--text-dim);font-size:11px">(${e.label})</span></li>`;
+      if (!f) return '';
+      return `<li><span style="color:${safeColor(f.color)}">${esc(f.label)}</span> <span style="color:var(--text-dim);font-size:11px">(${esc(e.label || '')})</span></li>`;
     }).join('')}</ul></div>`;
   }
   if (outgoing.length) {
     html += `<div class="detail-section"><h3>Depends On</h3><ul>${outgoing.map(e => {
       const t = modules.find(mod => mod.id === e.to);
-      return `<li><span style="color:${t.color}">${t.label}</span> <span style="color:var(--text-dim);font-size:11px">(${e.label})</span></li>`;
+      if (!t) return '';
+      return `<li><span style="color:${safeColor(t.color)}">${esc(t.label)}</span> <span style="color:var(--text-dim);font-size:11px">(${esc(e.label || '')})</span></li>`;
     }).join('')}</ul></div>`;
   }
 
-  if (d.notes) html += `<div class="detail-section"><h3>Notes</h3><p style="font-size:12px; line-height:1.5; color:var(--text-dim); white-space:pre-line;">${d.notes}</p></div>`;
+  if (d.notes) html += `<div class="detail-section"><h3>Notes</h3><p style="font-size:12px; line-height:1.5; color:var(--text-dim); white-space:pre-line;">${esc(d.notes)}</p></div>`;
 
   document.getElementById('detail-content').innerHTML = html;
 }
 
 function legendDotsHtml() {
-  return legendItems.map(li => `<div class="legend-item"><div class="legend-dot" style="background:${tierColor(li.tier)}"></div> ${li.label}</div>`).join('');
+  return legendItems.map(li => `<div class="legend-item"><div class="legend-dot" style="background:${safeColor(tierColor(li.tier))}"></div> ${esc(li.label)}</div>`).join('');
 }
 
 function pipelineHtml() {
   return pipelineSteps.map(s =>
-    s.type === 'label' ? `<div class="pipe-step"><span class="pipe-label">${s.text}</span></div>`
-                       : `<div class="pipe-step"><span class="pipe-arrow">&#9660;</span> ${s.text}</div>`
+    s.type === 'label' ? `<div class="pipe-step"><span class="pipe-label">${esc(s.text)}</span></div>`
+                       : `<div class="pipe-step"><span class="pipe-arrow">&#9660;</span> ${esc(s.text)}</div>`
   ).join('');
 }
 
@@ -566,7 +590,10 @@ function toggleEdgeMode() { showEdgeLabels = !showEdgeLabels; draw(); }
 function toggleLabels() { showAllLabels = !showAllLabels; draw(); }
 
 function exportMarkdown() {
-  const projectName = '{{PROJECT_NAME}}';
+  // Read project name from the data attribute rather than embedding
+  // it as a JS string literal — avoids injection via quotes/newlines
+  // in the project name itself.
+  const projectName = document.body.dataset.projectName || 'Project';
   const totalLines = modules.reduce((sum, m) => sum + m.lines, 0);
   const totalFiles = modules.length;
   const totalLayers = [...new Set(modules.map(m => m.tier))].length;
@@ -602,17 +629,17 @@ function exportMarkdown() {
 
   const tierNames = {
     'entry': 'Entry Points',
-    'api': 'MCP Tools',
-    'data': 'State Storage',
-    'driver': 'AI Core',
-    'codegen': 'FCPXML Format',
-    'util': 'Utilities',
     'frontend': 'Frontend',
-    'ir': 'IR/AST',
+    'ir': 'IR / AST',
+    'codegen': 'Code Generation',
     'runtime': 'Runtime',
-    'lint': 'Analysis',
+    'lint': 'Analysis / Lint',
+    'driver': 'Driver',
+    'data': 'Data',
+    'api': 'API Layer',
     'ui': 'UI Components',
     'infra': 'Infrastructure',
+    'util': 'Utilities',
     'test': 'Testing',
     'config': 'Configuration'
   };
@@ -628,14 +655,16 @@ function exportMarkdown() {
   // Detailed Module Analysis
   md += `## Module Details\n\n`;
 
-  modules.sort((a, b) => {
-    const tierOrder = ['entry', 'api', 'data', 'driver', 'codegen', 'util', 'frontend', 'ir', 'runtime', 'lint', 'ui', 'infra', 'test', 'config'];
+  // Sort a copy — never mutate the live `modules` array, which
+  // the canvas renderer continues to iterate after export.
+  const tierOrder = ['entry', 'api', 'data', 'driver', 'codegen', 'util', 'frontend', 'ir', 'runtime', 'lint', 'ui', 'infra', 'test', 'config'];
+  const sortedModules = [...modules].sort((a, b) => {
     const tierDiff = tierOrder.indexOf(a.tier) - tierOrder.indexOf(b.tier);
     if (tierDiff !== 0) return tierDiff;
     return a.y - b.y;
   });
 
-  modules.forEach(m => {
+  sortedModules.forEach(m => {
     const d = m.details || {};
     const incoming = edges.filter(e => e.to === m.id);
     const outgoing = edges.filter(e => e.from === m.id);
@@ -667,7 +696,7 @@ function exportMarkdown() {
       md += `**Used By:**\n`;
       incoming.forEach(e => {
         const from = modules.find(mod => mod.id === e.from);
-        md += `- ${from.label} (${e.label})\n`;
+        if (from) md += `- ${from.label} (${e.label})\n`;
       });
       md += `\n`;
     }
@@ -676,7 +705,7 @@ function exportMarkdown() {
       md += `**Depends On:**\n`;
       outgoing.forEach(e => {
         const to = modules.find(mod => mod.id === e.to);
-        md += `- ${to.label} (${e.label})\n`;
+        if (to) md += `- ${to.label} (${e.label})\n`;
       });
       md += `\n`;
     }
@@ -688,11 +717,12 @@ function exportMarkdown() {
     md += `---\n\n`;
   });
 
-  // Dependency Graph
+  // Dependency Graph — skip edges whose endpoints have been removed.
   md += `## Dependency Graph\n\n`;
   edges.forEach(e => {
     const from = modules.find(m => m.id === e.from);
     const to = modules.find(m => m.id === e.to);
+    if (!from || !to) return;
     md += `- **${from.label}** → **${to.label}** (${e.label})\n`;
   });
 
