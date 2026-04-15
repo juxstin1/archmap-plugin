@@ -21,11 +21,12 @@ Invoked by `/archmap:repair` and `/archmap:diff`. Receives a list of modules fro
 - List of existing module objects (id, label, tier, files, types, functions, imports)
 - Project root path
 - Exclude paths from `.archmap.json` (if present)
+- **Filtered filesystem listing** (from a single `tree` / `find` / `Get-ChildItem -Recurse` call made by the orchestrator). Use this as your complete view of what currently exists — do NOT run exploratory directory listings.
 
 **Tasks:**
-1. For each module, check if its source files still exist at the expected paths
-2. If files exist, check if key types/functions have changed (scan for struct/class/function definitions)
-3. Check for NEW source files/directories not represented in any existing module
+1. For each existing module, check if its source files still appear in the provided listing. If they don't, it's dead.
+2. For modules whose files exist, check if key types/functions have changed (scan the files for struct/class/function definitions)
+3. Detect NEW source files in the listing that aren't represented in any existing module
 4. Check for import/dependency changes between modules
 5. Verify tier assignments still make sense given current file organization
 

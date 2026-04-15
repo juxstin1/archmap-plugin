@@ -57,12 +57,17 @@ An existing `docs/architecture.html` must exist. If no map exists, tell the user
 ### Phase 2: Lightweight Re-exploration
 
 1. **Check** for `.archmap.json` — load exclude paths
-2. **Dispatch** `archmap:archmap-repair-agent` in **scan mode** via the Task tool:
+2. **Enumerate the filesystem in ONE call** so new-file detection doesn't require exploratory directory-walking. **Push exclusions into the enumeration command itself — don't dump and filter after,** or a repo with untouched `node_modules`/`.git` can blow the context window. Compose the exclusion list (defaults `node_modules`, `dist`, `.git`, `vendor`, `target`, `build`, `.next`, `.venv`, `__pycache__` ∪ `.archmap.json` `exclude`) and use it directly:
+   - POSIX: `find . \( -path '*/node_modules' -o -path '*/.git' -o … \) -prune -o -type f -print`
+   - PowerShell: `Get-ChildItem -Recurse -File -Name -Exclude node_modules,dist,.git,…`
+   - `tree /F /A` on `cmd` is human-readable only; prefer the machine-parseable forms above.
+   If the filtered result still exceeds ~5000 entries, fall back to per-top-level-directory enumeration. Pass the resulting listing to the scan agent.
+3. **Dispatch** `archmap:archmap-repair-agent` in **scan mode** via the Task tool:
    ```
    subagent_type: archmap:archmap-repair-agent
    ```
-   Provide the agent with the full module list and project root
-3. **Wait** for the repair report (we use the repair report format but only for diffing, not fixing)
+   Provide the agent with the full module list, project root, and the filtered filesystem listing from step 2.
+4. **Wait** for the repair report (we use the repair report format but only for diffing, not fixing)
 
 ### Phase 3: Generate Diff
 

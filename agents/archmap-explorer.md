@@ -11,6 +11,18 @@ Dedicated exploration agent for codebase architecture analysis. Spawned by the `
 
 ## Agent Prompt
 
+**Start with ONE bulk filesystem enumeration — not file-by-file discovery.** Before any reads, dump the full file inventory in a single call. **Push exclusions into the enumeration command itself — don't dump everything and filter after** (unfiltered output from a repo with untouched `node_modules`/`.git` can blow the context window).
+
+Exclusion list: defaults (`node_modules`, `dist`, `.git`, `vendor`, `target`, `build`, `.next`, `.venv`, `__pycache__`) ∪ any `.archmap.json` `exclude`.
+
+- POSIX: `find <path> \( -path '*/node_modules' -o -path '*/.git' -o … \) -prune -o -type f -print` (one `-path` clause per excluded dir, all before the `-prune`)
+- PowerShell: `Get-ChildItem -Recurse -File -Name <path> -Exclude node_modules,dist,.git,vendor,target,build,.next,.venv,__pycache__`
+- Windows `cmd` `tree /F /A <path>` is human-readable only; prefer the machine-parseable forms above.
+
+If the filtered result still exceeds ~5000 entries, fall back to per-top-level-directory enumeration: enumerate each top-level source dir separately and combine in memory.
+
+This list is your complete file inventory — do NOT repeat directory listing during the read phase. Then, in parallel batches of 10–20, read the source files and extract their details.
+
 Thoroughly explore the codebase at the given path. For every source file, report:
 
 - File path and approximate line count
