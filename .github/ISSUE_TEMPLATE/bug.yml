@@ -12,7 +12,7 @@ body:
     attributes:
       label: Which component?
       options:
-        - /archmap (generate)
+        - /archmap:generate
         - /archmap:repair
         - /archmap:focus
         - /archmap:diff
@@ -33,7 +33,7 @@ body:
       description: Minimal, numbered steps. Include the command you ran.
       placeholder: |
         1. cd my-project
-        2. /archmap
+        2. /archmap:generate
         3. ...
     validations:
       required: true

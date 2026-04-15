@@ -39,8 +39,8 @@ Look for architecture documentation in the project:
 - Suggest running `/archmap:repair` to regenerate the markdown export
 
 **If no maps exist:**
-- Tell the user: "No architecture map found for this project. Run `/archmap` to generate one — it'll create an interactive visualization and structured documentation you can explore."
-- Do NOT attempt to explore the codebase yourself — that's `/archmap`'s job
+- Tell the user: "No architecture map found for this project. Run `/archmap:generate` to generate one — it'll create an interactive visualization and structured documentation you can explore."
+- Do NOT attempt to explore the codebase yourself — that's `/archmap:generate`'s job
 - You can still answer general architecture questions by reading key files (README, package.json, project structure), but note that a full map would provide better answers
 
 ### Step 3: Enrich with Context

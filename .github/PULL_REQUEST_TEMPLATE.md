@@ -19,7 +19,7 @@
 
 <!-- What did you actually run? -->
 
-- [ ] Ran `/archmap` against a small repo and verified the HTML opens and renders
+- [ ] Ran `/archmap:generate` against a small repo and verified the HTML opens and renders
 - [ ] Ran `/archmap:repair` / `/archmap:focus` / `/archmap:diff` as relevant
 - [ ] Opened `docs/architecture.html` in a browser and clicked through the inspector
 - [ ] Switched themes (dark / light / claude / openai) and verified no unstyled fallbacks

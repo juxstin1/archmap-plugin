@@ -36,12 +36,12 @@
         "html": {
           "type": "string",
           "default": "docs/architecture.html",
-          "description": "Where /archmap writes the interactive HTML map. Hooks read this path to detect staleness."
+          "description": "Where /archmap:generate writes the interactive HTML map. Hooks read this path to detect staleness."
         },
         "markdown": {
           "type": "string",
           "default": "docs/architecture-map.md",
-          "description": "Where /archmap writes the markdown export."
+          "description": "Where /archmap:generate writes the markdown export."
         }
       }
     },
@@ -69,7 +69,7 @@
         "respectOverrides": {
           "type": "boolean",
           "default": true,
-          "description": "When true (default), /archmap reads the layout-override file and preserves user-arranged module positions."
+          "description": "When true (default), /archmap:generate reads the layout-override file and preserves user-arranged module positions."
         },
         "overridePath": {
           "type": "string",

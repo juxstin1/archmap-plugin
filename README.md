@@ -50,7 +50,7 @@ claude --plugin-dir "$(pwd)"
 ## Quickstart
 
 1. Open Claude Code in any repo: `cd your-project && claude`
-2. Run `/archmap` — a few seconds later, `docs/architecture.html` opens in your browser
+2. Run `/archmap:generate` — a few seconds later, `docs/architecture.html` opens in your browser
 3. Edit some code, then run `/archmap:repair` to surgically patch just what changed
 4. Run `/archmap:diff` any time you want a drift report without modifying the map
 
@@ -58,9 +58,9 @@ claude --plugin-dir "$(pwd)"
 
 | Command | What it does |
 |---|---|
-| `/archmap` | Generate a full architecture map from scratch |
-| `/archmap <path>` | Map a specific subdirectory or project |
-| `/archmap --refresh` | Regenerate map (full re-explore) |
+| `/archmap:generate` | Generate a full architecture map from scratch |
+| `/archmap:generate <path>` | Map a specific subdirectory or project |
+| `/archmap:generate --refresh` | Regenerate map (full re-explore) |
 | `/archmap:repair` | Detect and fix stale/broken maps surgically |
 | `/archmap:repair --layout` | Fix only layout issues (overlaps, spacing) |
 | `/archmap:repair --details` | Fix only missing module details |
@@ -72,7 +72,7 @@ claude --plugin-dir "$(pwd)"
 
 ## How it works
 
-### Generate (`/archmap`)
+### Generate (`/archmap:generate`)
 Dispatches an explorer agent to deeply analyze the codebase, builds a tier-based layout with module nodes and dependency edges, renders to a self-contained HTML canvas, and exports structured markdown.
 
 ### Repair (`/archmap:repair`)
@@ -139,7 +139,7 @@ The HTML canvas has an **Edit** button (shortcut: `E`) that lets you drag module
 
 1. Click **Edit** → rearrange modules → click **Save** when the button appears
 2. Pick **Download `layout.json`** in the modal → commit the file to `.archmap/layout.json` in your project root
-3. Next time anyone runs `/archmap` or `/archmap:repair`, the generator respects your positions
+3. Next time anyone runs `/archmap:generate` or `/archmap:repair`, the generator respects your positions
 
 Drags snap to a 10 px grid. Hold `Shift` while dragging to bypass the snap for fine-tuning. The **Reset Layout** button restores the generator's default positions.
 
@@ -195,7 +195,7 @@ archmap-plugin/
 
 | Symptom | Fix |
 |---|---|
-| `/archmap` produced a broken map | `rm docs/architecture.html && /archmap` — regen from scratch |
+| `/archmap:generate` produced a broken map | `rm docs/architecture.html && /archmap:generate` — regen from scratch |
 | SessionStart nudge is too chatty | Set `hooks.sessionStart: false` in `.archmap.json` |
 | `docs/` conflicts with GitHub Pages | Change `output.html` to a different path in `.archmap.json` |
 | Hook warnings on Windows | Ensure bash is available (git-bash or WSL) |
