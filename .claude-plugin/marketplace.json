@@ -11,7 +11,7 @@
     {
       "name": "archmap",
       "source": "./",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "Interactive codebase architecture platform — generate, repair, focus, and diff architecture maps with canvas visualization, contextual intelligence, and live staleness detection",
       "author": {
         "name": "Justin",

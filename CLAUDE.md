@@ -28,7 +28,7 @@ hooks/
   scripts/detect-unmapped.sh      ← Detects missing/stale maps on session start
   scripts/flag-stale-modules.sh   ← Flags edits to mapped modules
 templates/
-  archmap-template.html           ← Self-contained HTML canvas visualization (~720 lines)
+  archmap-template.html           ← Self-contained HTML canvas visualization (~1300 lines)
 ```
 
 ## Command Pipeline
@@ -86,6 +86,8 @@ Optional per-project config in project root:
 - `output.html` / `output.markdown` — custom output paths (hooks read `output.html` when deciding which file to watch for staleness)
 - `theme` — default theme
 - `hooks.sessionStart` — set to `false` to silence the SessionStart staleness nudge
+- `history.enabled` / `history.autoSnapshotOnRepair` / `history.autoSnapshotOnFocus` — booleans (default `true`) controlling the version-history subsystem. `history.maxInlineSnapshots` (default `50`) caps inline snapshots before spilling to `history.spillPath` (default `.archmap/snapshots`)
+- `layout.respectOverrides` / `layout.overridePath` — whether `/archmap:generate` preserves user-arranged positions and where to read them from (default `.archmap/layout.json`)
 
 ## Hooks
 
