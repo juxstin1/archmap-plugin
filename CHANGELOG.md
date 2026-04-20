@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`/archmap:history list` and `/archmap:history drop <version>`.** Ergonomic CLI
+  access to snapshot history written by `/archmap:snapshot`. `list` prints the
+  timeline newest-first, merging inline entries from the map HTML with spilled
+  JSON files under `.archmap/snapshots/` and marking each entry's source.
+  `drop <version>` removes a snapshot by label: spilled snapshots are deleted
+  from disk (no HTML rewrite); inline snapshots trigger a full template
+  re-substitution with atomic write. The newest snapshot is refused (it mirrors
+  the live map arrays), and nonexistent versions return a clean error listing
+  available ones. Fixes #27.
+
 ## [1.1.0] — 2026-04-19
 
 ### Changed (BREAKING)
