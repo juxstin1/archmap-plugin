@@ -39,7 +39,7 @@ These rules apply to all phases below. They exist so the agent spends model cycl
    - Windows: `Test-Path docs/architecture-map.md, docs/architecture.html, .archmap.json, .archmap/layout.json`
    - POSIX: `for f in docs/architecture-map.md docs/architecture.html .archmap.json .archmap/layout.json; do [ -e "$f" ] && echo "$f"; done`
 
-2. **HTML map extraction: read `docs/architecture.html` ONCE, in full, then extract all `const` arrays in-memory via regex.** Do not run `Select-String` (or `grep`) once per variable. One full read + one regex pass is correct; seven sequential greps of the same file are not. Variables to extract in a single pass: `const modules`, `const edges`, `const tierLabels`, `const pipelineSteps`, `const legendItems`, `const layoutOverrides`, `const history`.
+2. **HTML map extraction: read `docs/architecture.html` ONCE, in full, then extract all top-level JSON arrays in-memory via regex.** Do not run `Select-String` (or `grep`) once per variable. One full read + one regex pass is correct; seven sequential greps of the same file are not. Variables to extract in a single pass (match `const` OR `let` for modules/edges/tierLabels/pipelineSteps/legendItems/layoutOverrides — newer template versions use `let` so the timeline scrubber can rebind them; `history` stays `const`): `modules`, `edges`, `tierLabels`, `pipelineSteps`, `legendItems`, `layoutOverrides`, `history`.
 
 3. **Independent reads run in parallel.** When a phase lists reads that do not depend on each other, issue them as concurrent tool calls.
 
@@ -133,7 +133,7 @@ Tell the user:
 - This is a SURGICAL operation — only the target module and its direct edges are modified
 - Never reposition modules that aren't the target or its immediate neighbors
 - Preserve all other modules' data exactly as-is — including their positions
-- **Preserve user layout.** Extract the existing map's `const layoutOverrides = {...}` block and carry it forward verbatim into `{{LAYOUT_JSON}}`. Focus must never drop user-arranged positions.
+- **Preserve user layout.** Extract the existing map's `layoutOverrides = {...}` block (match `const` or `let`) and carry it forward verbatim into `{{LAYOUT_JSON}}`. Focus must never drop user-arranged positions.
 - **Preserve history.** Extract `const history = [...]` and carry it forward verbatim into `{{HISTORY_JSON}}`. Focus is additive to history (via Phase 0 auto-snapshot), never destructive.
 - If the focused module was deleted from the codebase, remove it and clean up its edges (treat as a repair). Drop its entry from `layoutOverrides` as well.
 - Module `color` properties are set at runtime — do NOT hardcode colors

@@ -242,6 +242,71 @@
 
   .maturity-bar { display: flex; gap: 2px; margin-top: 4px; }
   .maturity-seg { height: 4px; border-radius: 2px; flex: 1; }
+
+  /* Timeline scrubber: appears only when history.length >= 2. Pill
+     centered on the canvas area (left: calc(50% - 160px) compensates
+     for the 320px sidebar on the right). */
+  #timeline {
+    position: fixed;
+    bottom: 16px;
+    left: calc(50% - 160px);
+    transform: translateX(-50%);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 14px;
+    display: none;
+    align-items: center;
+    gap: 12px;
+    z-index: 50;
+    max-width: calc(100vw - 360px);
+    transition: background 0.3s, border-color 0.3s;
+  }
+  #timeline.visible { display: flex; }
+
+  #timeline-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    white-space: nowrap;
+    min-width: 0;
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  #timeline-ticks {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 2px 0;
+  }
+  #timeline-ticks::-webkit-scrollbar { height: 4px; }
+  #timeline-ticks::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .timeline-tick {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--border);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+    transition: transform 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  }
+  .timeline-tick:hover {
+    background: var(--text-dim);
+    transform: scale(1.3);
+  }
+  .timeline-tick.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 8px var(--accent-glow);
+    transform: scale(1.25);
+  }
 </style>
 </head>
 <body data-project-name="{{PROJECT_NAME}}">
@@ -273,6 +338,11 @@
   <button id="save-layout-btn" onclick="openSaveLayoutModal()" style="display:none" title="Save your layout to share with teammates (download JSON) or bake into the HTML (copy patch).">Save</button>
   <button id="reset-layout-btn" onclick="resetLayout()" style="display:none" title="Restore the generated layout. Discards any manual repositioning.">Reset Layout</button>
   <button id="export-btn" onclick="exportAll()" title="Downloads a PNG of the map + a markdown file referencing it. Drop both in your docs/ folder for a shareable pair.">Export</button>
+</div>
+
+<div id="timeline" title="Timeline scrubber. Arrow keys step between snapshots; Home/End jump to ends.">
+  <span id="timeline-label"></span>
+  <div id="timeline-ticks"></div>
 </div>
 
 <div id="save-layout-modal" class="modal">
@@ -408,20 +478,23 @@ let currentThemeName = 'dark';
 
 // ── Project Data (populated per-codebase) ─────────────
 
-const modules = {{MODULES_JSON}};
+// These are `let` (not `const`) because the timeline scrubber rebinds
+// them to snapshot copies when the user scrubs through history[]. The
+// top-level bindings always reflect the currently-visible snapshot.
+let modules = {{MODULES_JSON}};
 
-const edges = {{EDGES_JSON}};
+let edges = {{EDGES_JSON}};
 
-const tierLabels = {{TIER_LABELS_JSON}};
+let tierLabels = {{TIER_LABELS_JSON}};
 
-const pipelineSteps = {{PIPELINE_JSON}};
+let pipelineSteps = {{PIPELINE_JSON}};
 
-const legendItems = {{LEGEND_JSON}};
+let legendItems = {{LEGEND_JSON}};
 
 // Baked-in layout overrides from .archmap/layout.json (substituted by
 // the /archmap:generate command at generation time). Shape: { moduleId: {x,y} }.
 // Empty object when no layout.json exists in the project.
-const layoutOverrides = {{LAYOUT_JSON}};
+let layoutOverrides = {{LAYOUT_JSON}};
 
 // Version history — snapshots of prior map states so the Phase 2
 // timeline scrubber can play back architectural evolution. Append-only:
@@ -438,8 +511,12 @@ const history = {{HISTORY_JSON}};
 
 // Preserve original positions so "Reset layout" can restore them even
 // after the user has dragged modules around. This runs before any
-// drag handlers attach and before applyLayoutOverrides below.
-modules.forEach(m => { m._origX = m.x; m._origY = m.y; });
+// drag handlers attach and before applyLayoutOverrides below. Also
+// re-invoked by the timeline scrubber whenever snapshot data is swapped.
+function captureOriginalPositions(mods) {
+  mods.forEach(m => { m._origX = m.x; m._origY = m.y; });
+}
+captureOriginalPositions(modules);
 
 // Persistence key for browser-saved drag positions. Namespaced by
 // project name so different maps in different tabs don't collide.
@@ -976,6 +1053,119 @@ async function copyLayoutPatch() {
   }
 }
 
+// ── Timeline scrubber ─────────────────────────────────────
+
+// Index into history[] that the canvas is currently rendering. Defaults
+// to the newest entry, which mirrors the top-level module/edge arrays.
+let currentSnapshot = Array.isArray(history) && history.length > 0
+  ? history.length - 1
+  : 0;
+
+function deepClone(x) {
+  try { return JSON.parse(JSON.stringify(x)); } catch (_) { return x; }
+}
+
+// Swap the top-level state arrays to the chosen snapshot and redraw.
+// No tween — Phase 2b adds animation when diff mode lands.
+function setSnapshot(i) {
+  if (!Array.isArray(history) || history.length === 0) return;
+  const idx = Math.max(0, Math.min(history.length - 1, i | 0));
+  const snap = history[idx];
+  if (!snap) return;
+
+  // Deep-clone so user interaction (drag, theme recolor) never mutates
+  // the preserved historical copy.
+  modules = deepClone(snap.modules || []);
+  edges = deepClone(snap.edges || []);
+  tierLabels = deepClone(snap.tierLabels || []);
+  pipelineSteps = deepClone(snap.pipelineSteps || []);
+  legendItems = deepClone(snap.legendItems || []);
+  layoutOverrides = deepClone(snap.layoutOverrides || {});
+
+  captureOriginalPositions(modules);
+  applyLayoutOverrides();
+  modules.forEach(m => { m.color = tierColor(m.tier); });
+
+  // Drop selection/hover if the referenced module isn't in this snapshot.
+  if (selectedModule && !modules.some(m => m.id === selectedModule)) {
+    selectedModule = null;
+  }
+  hoveredModule = null;
+
+  currentSnapshot = idx;
+  updateTimelineUI();
+
+  // Refresh sidebar to reflect the new snapshot's data.
+  if (selectedModule) {
+    const m = modules.find(mod => mod.id === selectedModule);
+    if (m) showDetail(m); else showDefaultSidebar();
+  } else {
+    showDefaultSidebar();
+  }
+  draw();
+}
+
+function initTimeline() {
+  const tl = document.getElementById('timeline');
+  if (!tl) return;
+  if (!Array.isArray(history) || history.length < 2) {
+    tl.classList.remove('visible');
+    return;
+  }
+  const ticks = document.getElementById('timeline-ticks');
+  if (!ticks) return;
+  ticks.innerHTML = '';
+  history.forEach((snap, i) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'timeline-tick';
+    btn.dataset.index = String(i);
+    btn.setAttribute('aria-label', snapshotHoverText(snap, i));
+    btn.title = snapshotHoverText(snap, i);
+    btn.onclick = () => setSnapshot(i);
+    ticks.appendChild(btn);
+  });
+  tl.classList.add('visible');
+  updateTimelineUI();
+}
+
+function snapshotHoverText(snap, i) {
+  if (!snap) return `#${i + 1}`;
+  const version = snap.version || `#${i + 1}`;
+  const date = snap.date ? String(snap.date).slice(0, 10) : '';
+  const note = snap.note ? String(snap.note) : '';
+  const parts = [version];
+  if (date) parts.push(date);
+  if (note) parts.push(`"${note}"`);
+  return parts.join(' \u00b7 ');
+}
+
+function updateTimelineUI() {
+  const ticks = document.querySelectorAll('#timeline-ticks .timeline-tick');
+  ticks.forEach((el, i) => el.classList.toggle('active', i === currentSnapshot));
+  const label = document.getElementById('timeline-label');
+  if (label) {
+    const snap = Array.isArray(history) ? history[currentSnapshot] : null;
+    label.textContent = snap ? snapshotHoverText(snap, currentSnapshot) : '';
+  }
+  // Keep the active tick in view when the ticks row overflows.
+  const activeEl = document.querySelector('#timeline-ticks .timeline-tick.active');
+  if (activeEl && activeEl.scrollIntoView) {
+    try { activeEl.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (_) {}
+  }
+}
+
+// Deep-link support: ?at=<version> on load jumps to that snapshot.
+function applyInitialSnapshotFromUrl() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const at = params.get('at');
+    if (!at || !Array.isArray(history)) return;
+    const idx = history.findIndex(s => s && s.version === at);
+    if (idx >= 0 && idx !== currentSnapshot) setSnapshot(idx);
+  } catch (_) {}
+}
+
 // Builds the markdown export as a string. When `imagePath` is supplied,
 // embeds it at the top so a sibling `<imagePath>` file renders inline
 // when the markdown is viewed on GitHub, Notion, Slack, etc.
@@ -1283,12 +1473,26 @@ window.addEventListener('keydown', e => {
     } else if (editMode) {
       toggleEditMode();
     }
+  } else if (
+    Array.isArray(history) && history.length >= 2 && !editMode &&
+    (e.key === 'ArrowLeft' || e.key === 'ArrowRight' ||
+     e.key === 'Home' || e.key === 'End')
+  ) {
+    e.preventDefault();
+    if (e.key === 'ArrowLeft') setSnapshot(currentSnapshot - 1);
+    else if (e.key === 'ArrowRight') setSnapshot(currentSnapshot + 1);
+    else if (e.key === 'Home') setSnapshot(0);
+    else if (e.key === 'End') setSnapshot(history.length - 1);
   }
 });
 
 // Make sure buttons reflect state at load (in case the user arrived
 // with a non-empty localStorage layout from a prior session).
 refreshLayoutControls();
+
+// Timeline scrubber: build ticks, then honor ?at=<version> deep links.
+initTimeline();
+applyInitialSnapshotFromUrl();
 </script>
 </body>
 </html>

@@ -39,7 +39,7 @@ These rules apply to all phases below. They exist so the agent spends model cycl
    - Windows: `Test-Path docs/architecture-map.md, docs/architecture.html, .archmap.json, .archmap/layout.json`
    - POSIX: `for f in docs/architecture-map.md docs/architecture.html .archmap.json .archmap/layout.json; do [ -e "$f" ] && echo "$f"; done`
 
-2. **HTML map extraction: read `docs/architecture.html` ONCE, in full, then extract all `const` arrays in-memory via regex.** Do not run `Select-String` (or `grep`) once per variable. One full read + one regex pass is correct; seven sequential greps of the same file are not. Variables to extract in a single pass: `const modules`, `const edges`, `const tierLabels`, `const pipelineSteps`, `const legendItems`, `const layoutOverrides`, `const history`.
+2. **HTML map extraction: read `docs/architecture.html` ONCE, in full, then extract all top-level JSON arrays in-memory via regex.** Do not run `Select-String` (or `grep`) once per variable. One full read + one regex pass is correct; seven sequential greps of the same file are not. Variables to extract in a single pass (match `const` OR `let` for modules/edges/tierLabels/pipelineSteps/legendItems/layoutOverrides — newer template versions use `let` so the timeline scrubber can rebind them; `history` stays `const`): `modules`, `edges`, `tierLabels`, `pipelineSteps`, `legendItems`, `layoutOverrides`, `history`.
 
 3. **Independent reads run in parallel.** When a phase lists reads that do not depend on each other (e.g., loading `.archmap.json` and `.archmap/layout.json`), issue them as concurrent tool calls.
 
