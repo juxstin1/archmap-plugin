@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-04-19
+
 ### Changed (BREAKING)
 - **Slash commands renamed for cleaner user-facing invocations.** Because Claude Code plugins are namespaced as `/<plugin-name>:<command-file-name>`, the old file `commands/archmap.md` was invoked as `/archmap:archmap` — duplicating the plugin name in every call. Command files are renamed so users type:
   - `/archmap:generate` (was `/archmap:archmap`) — generate a full map
@@ -89,5 +91,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Light, Claude, OpenAI), pan/zoom, module inspector, and markdown export.
 - `.archmap.json` configuration support.
 
-[Unreleased]: https://github.com/juxstin1/archmap-plugin/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/juxstin1/archmap-plugin/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/juxstin1/archmap-plugin/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/juxstin1/archmap-plugin/releases/tag/v1.0.0
