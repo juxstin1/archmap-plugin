@@ -109,6 +109,8 @@ With `${ARCHMAP_ROOT}` exported, both the template (rule 1) and the agent prompt
 | `/archmap:diff --output docs/` | Write drift report to file |
 | `/archmap:snapshot` | Save a version snapshot to the map's history |
 | `/archmap:snapshot --name v1.0 --note "..."` | Named snapshot with custom note |
+| `/archmap:history list` | Print the snapshot timeline (newest first) |
+| `/archmap:history drop <version>` | Remove a snapshot by version label |
 
 ## How it works
 
