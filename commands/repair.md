@@ -40,7 +40,7 @@ These rules apply to all phases below. They exist so the agent spends model cycl
    - Windows: `Test-Path docs/architecture-map.md, docs/architecture.html, .archmap.json, .archmap/layout.json`
    - POSIX: `for f in docs/architecture-map.md docs/architecture.html .archmap.json .archmap/layout.json; do [ -e "$f" ] && echo "$f"; done`
 
-2. **HTML map extraction: read `docs/architecture.html` ONCE, in full, then extract all `const` arrays in-memory via regex.** Do not run `Select-String` (or `grep`) once per variable. One full read + one regex pass is correct; seven sequential greps of the same file are not. Variables to extract in a single pass: `const modules`, `const edges`, `const tierLabels`, `const pipelineSteps`, `const legendItems`, `const layoutOverrides`, `const history`.
+2. **HTML map extraction: read `docs/architecture.html` ONCE, in full, then extract all top-level JSON arrays in-memory via regex.** Do not run `Select-String` (or `grep`) once per variable. One full read + one regex pass is correct; seven sequential greps of the same file are not. Variables to extract in a single pass (match `const` OR `let` for modules/edges/tierLabels/pipelineSteps/legendItems/layoutOverrides — newer template versions use `let` so the timeline scrubber can rebind them; `history` stays `const`): `modules`, `edges`, `tierLabels`, `pipelineSteps`, `legendItems`, `layoutOverrides`, `history`.
 
 3. **Independent reads run in parallel.** When a phase lists reads that do not depend on each other, issue them as concurrent tool calls.
 
@@ -64,14 +64,14 @@ This guarantees users can always roll back a bad repair by scrubbing to the pre-
 ### Phase 1: Extract Current Map State
 
 1. **Read** `docs/architecture.html` from the project root (or custom path from `.archmap.json`)
-2. **Parse** the embedded JavaScript to extract the current map data:
-   - Find the line `const modules = [...]` and extract the JSON array
-   - Find `const edges = [...]` and extract the JSON array
-   - Find `const tierLabels = [...]` and extract
-   - Find `const pipelineSteps = [...]` and extract
-   - Find `const legendItems = [...]` and extract
-   - Find `const layoutOverrides = {...}` and extract
-   - Find `const history = [...]` and extract (preserve across the rewrite)
+2. **Parse** the embedded JavaScript to extract the current map data. Match declarations with either `const` or `let` (the timeline scrubber rebinds the top-level arrays, so newer template versions use `let`):
+   - Find the line `(const|let) modules = [...]` and extract the JSON array
+   - Find `(const|let) edges = [...]` and extract the JSON array
+   - Find `(const|let) tierLabels = [...]` and extract
+   - Find `(const|let) pipelineSteps = [...]` and extract
+   - Find `(const|let) legendItems = [...]` and extract
+   - Find `(const|let) layoutOverrides = {...}` and extract
+   - Find `const history = [...]` and extract (preserve across the rewrite; history stays `const`)
    - Find the project name from the `<title>` tag
 3. **Store** this as the "current map state" for diffing
 
@@ -144,7 +144,7 @@ If `--details` flag is used, ONLY perform detail fixes (skip staleness/layout).
    - `{{LEGEND_JSON}}` → updated legend (only tiers actually used)
    - `{{LAYOUT_JSON}}` → merged user-arranged positions (see below)
    - `{{HISTORY_JSON}}` → the existing `history` array (preserved verbatim from Phase 1, now including the pre-repair auto-snapshot added in Phase 0). Never discard history.
-3. **Preserve user layout.** Extract the existing map's `const layoutOverrides = {...}` block AND the `modules[].x / .y` positions — they represent user-arranged positions. Merge those into the new `{{LAYOUT_JSON}}` so repair never loses manually-placed modules. For each module in the repaired result:
+3. **Preserve user layout.** Extract the existing map's `layoutOverrides = {...}` block (match `const` or `let`) AND the `modules[].x / .y` positions — they represent user-arranged positions. Merge those into the new `{{LAYOUT_JSON}}` so repair never loses manually-placed modules. For each module in the repaired result:
    - If it existed in the old map: keep its old x/y in `layoutOverrides`.
    - If it's newly added: auto-layout in its tier column (do NOT add to `layoutOverrides` — let defaults stand so the user can decide where it belongs).
    - If the user's manual position would now collide with a new module, flag the collision in Phase 5 so the user can rearrange if they want.

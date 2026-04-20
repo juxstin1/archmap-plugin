@@ -37,7 +37,7 @@ These rules apply to all phases below. They exist so the agent spends model cycl
    - Windows: `Test-Path docs/architecture.html, .archmap.json, .archmap/snapshots`
    - POSIX: `for f in docs/architecture.html .archmap.json .archmap/snapshots; do [ -e "$f" ] && echo "$f"; done`
 
-2. **HTML map extraction: read `docs/architecture.html` ONCE, in full, then extract all `const` arrays in-memory via regex.** Do not run `Select-String` (or `grep`) once per variable. One full read + one regex pass is correct; seven sequential greps of the same file are not. Variables to extract in a single pass: `const modules`, `const edges`, `const tierLabels`, `const pipelineSteps`, `const legendItems`, `const layoutOverrides`, `const history`.
+2. **HTML map extraction: read `docs/architecture.html` ONCE, in full, then extract all top-level JSON arrays in-memory via regex.** Do not run `Select-String` (or `grep`) once per variable. One full read + one regex pass is correct; seven sequential greps of the same file are not. Variables to extract in a single pass (match `const` OR `let` for modules/edges/tierLabels/pipelineSteps/legendItems/layoutOverrides — newer template versions use `let` so the timeline scrubber can rebind them; `history` stays `const`): `modules`, `edges`, `tierLabels`, `pipelineSteps`, `legendItems`, `layoutOverrides`, `history`.
 
 3. **Independent reads run in parallel.** When a phase lists reads that do not depend on each other, issue them as concurrent tool calls.
 
@@ -47,15 +47,15 @@ These rules apply to all phases below. They exist so the agent spends model cycl
 
 ### Phase 1: Load current map
 
-Read the target HTML file (default `docs/architecture.html`, or the path in `.archmap.json` `output.html`). Extract the current data by parsing the JavaScript variable declarations between the anchor comments:
+Read the target HTML file (default `docs/architecture.html`, or the path in `.archmap.json` `output.html`). Extract the current data by parsing the JavaScript variable declarations (match either `const` or `let` — newer template versions use `let` for the top-level arrays so the timeline scrubber can rebind them):
 
-- `const modules = [...]`
-- `const edges = [...]`
-- `const tierLabels = [...]`
-- `const pipelineSteps = [...]`
-- `const legendItems = [...]`
-- `const layoutOverrides = {...}`
-- `const history = [...]` — the existing history array (empty on first run)
+- `(const|let) modules = [...]`
+- `(const|let) edges = [...]`
+- `(const|let) tierLabels = [...]`
+- `(const|let) pipelineSteps = [...]`
+- `(const|let) legendItems = [...]`
+- `(const|let) layoutOverrides = {...}`
+- `const history = [...]` — the existing history array (empty on first run; stays `const`)
 
 If the target file doesn't exist, tell the user to run `/archmap:generate` first and exit.
 
@@ -148,5 +148,5 @@ Tell the user:
 ## Important
 
 - Snapshots are **additive only**. This command never deletes or modifies existing history entries.
-- The current-state top-level arrays (`const modules`, etc.) always mirror the newest snapshot's data — code that doesn't care about history keeps working unchanged.
+- The current-state top-level arrays (`modules`, `edges`, etc. — declared as `let` in newer templates, `const` in older ones) always mirror the newest snapshot's data — code that doesn't care about history keeps working unchanged.
 - Preserve `details.notes` on every module in every snapshot (user-customized notes should never be lost).

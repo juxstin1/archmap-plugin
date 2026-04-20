@@ -67,7 +67,7 @@ The HTML template uses these exact placeholder strings (double-curly-brace forma
 
 ## Map State Extraction
 
-All repair/focus/diff commands extract current map state by reading `docs/architecture.html` and parsing the JS variable assignments: `const modules = [...]`, `const edges = [...]`, etc. Project name comes from the `<title>` tag.
+All repair/focus/diff commands extract current map state by reading `docs/architecture.html` and parsing the JS variable assignments: `modules`, `edges`, `tierLabels`, `pipelineSteps`, `legendItems`, `layoutOverrides`, `history`. Match `const` OR `let` for the first six — newer template versions (starting with the Phase 2a timeline scrubber) use `let` so the scrubber can rebind the arrays when swapping snapshots. `history` stays `const`. Project name comes from the `<title>` tag.
 
 ## Theme System
 
