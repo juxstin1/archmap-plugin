@@ -1237,7 +1237,7 @@ function buildMarkdown(imagePath) {
 
   // Sort a copy — never mutate the live `modules` array, which
   // the canvas renderer continues to iterate after export.
-  const tierOrder = ['entry', 'api', 'data', 'driver', 'codegen', 'util', 'frontend', 'ir', 'runtime', 'lint', 'ui', 'infra', 'test', 'config'];
+  const tierOrder = Object.keys(THEMES.dark.tiers);
   const sortedModules = [...modules].sort((a, b) => {
     const tierDiff = tierOrder.indexOf(a.tier) - tierOrder.indexOf(b.tier);
     if (tierDiff !== 0) return tierDiff;
