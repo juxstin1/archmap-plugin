@@ -333,7 +333,6 @@
 <div id="controls">
   <button onclick="resetView()">Reset View</button>
   <button onclick="toggleEdgeMode()">Toggle Edges</button>
-  <button onclick="toggleLabels()">Toggle Labels</button>
   <button id="edit-btn" onclick="toggleEditMode()" title="Toggle Edit mode (shortcut: E). Drag modules to reposition them. Shift-drag bypasses the 10px grid snap.">Edit</button>
   <button id="save-layout-btn" onclick="openSaveLayoutModal()" style="display:none" title="Save your layout to share with teammates (download JSON) or bake into the HTML (copy patch).">Save</button>
   <button id="reset-layout-btn" onclick="resetLayout()" style="display:none" title="Restore the generated layout. Discards any manual repositioning.">Reset Layout</button>
@@ -474,7 +473,6 @@ const THEMES = {
 };
 
 let T = THEMES.dark;
-let currentThemeName = 'dark';
 
 // ── Project Data (populated per-codebase) ─────────────
 
@@ -569,7 +567,6 @@ function tierColor(tier) { return T.tiers[tier] || T.tiers.entry; }
 
 function applyTheme(name) {
   T = THEMES[name];
-  currentThemeName = name;
   const root = document.documentElement;
   for (const [k, v] of Object.entries(T.css)) root.style.setProperty(k, v);
   modules.forEach(m => { m.color = tierColor(m.tier); });
@@ -608,7 +605,7 @@ let dpr = window.devicePixelRatio || 1;
 let viewX = 0, viewY = 0, viewScale = 1;
 let isDragging = false, dragStartX, dragStartY;
 let hoveredModule = null, selectedModule = null;
-let showEdgeLabels = true, showAllLabels = true;
+let showEdgeLabels = true;
 
 // Edit mode: when true, clicks on modules drag them instead of
 // selecting. Resolved at mousedown; never changes mid-gesture.
@@ -616,7 +613,6 @@ let editMode = false;
 let dragModuleId = null;     // id of module currently being dragged
 let dragOffsetX = 0;         // world-space offset within the module
 let dragOffsetY = 0;
-let layoutDirty = false;     // true once any module has moved from _orig
 
 function resize() {
   const container = document.getElementById('canvas-container');
@@ -808,7 +804,6 @@ canvas.addEventListener('mousemove', e => {
         ny = Math.round(ny / 10) * 10;
       }
       m.x = nx; m.y = ny;
-      layoutDirty = true;
       draw();
     }
     return;
@@ -945,7 +940,6 @@ function showDefaultSidebar() {
 
 function resetView() { viewX = 30; viewY = 30; viewScale = 1; selectedModule = null; showDefaultSidebar(); draw(); }
 function toggleEdgeMode() { showEdgeLabels = !showEdgeLabels; draw(); }
-function toggleLabels() { showAllLabels = !showAllLabels; draw(); }
 
 // ── Layout editing ────────────────────────────────────
 
@@ -961,7 +955,7 @@ function persistLayoutToLocal() {
 
 // Does any module currently sit at a non-default position? Compared
 // against _origX/_origY captured at load. Drives Save/Reset button
-// visibility and the layoutDirty flag.
+// visibility.
 function hasLayoutOverrides() {
   return modules.some(m => m.x !== m._origX || m.y !== m._origY);
 }
@@ -994,7 +988,6 @@ function resetLayout() {
   if (!confirm('Reset all manual positions?\n\nThis discards any repositioning you have done and restores the generated layout.')) return;
   clearLocalLayout();
   applyLayoutOverrides();   // re-applies baked overrides on top of _orig
-  layoutDirty = false;
   refreshLayoutControls();
   draw();
 }
@@ -1241,7 +1234,7 @@ function buildMarkdown(imagePath) {
 
   // Sort a copy — never mutate the live `modules` array, which
   // the canvas renderer continues to iterate after export.
-  const tierOrder = ['entry', 'api', 'data', 'driver', 'codegen', 'util', 'frontend', 'ir', 'runtime', 'lint', 'ui', 'infra', 'test', 'config'];
+  const tierOrder = Object.keys(THEMES.dark.tiers);
   const sortedModules = [...modules].sort((a, b) => {
     const tierDiff = tierOrder.indexOf(a.tier) - tierOrder.indexOf(b.tier);
     if (tierDiff !== 0) return tierDiff;
