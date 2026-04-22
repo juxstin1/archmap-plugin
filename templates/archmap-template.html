@@ -841,7 +841,7 @@ canvas.addEventListener('mouseup', e => {
       else { selectedModule = null; showDefaultSidebar(); }
     }
   }
-  isDragging = false; canvas.style.cursor = hoveredModule ? 'pointer' : 'grab'; draw();
+  isDragging = false; canvas.style.cursor = hoveredModule ? (editMode ? 'move' : 'pointer') : (editMode ? 'crosshair' : 'grab'); draw();
 });
 
 canvas.addEventListener('wheel', e => {
