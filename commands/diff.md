@@ -1,6 +1,6 @@
 ---
 description: Detect architectural drift between the current codebase and existing architecture map.
-argument-hint: "[--output <path>] [--summary]"
+argument-hint: "[--output <path>] [--summary] [--json]"
 ---
 
 # /archmap:diff — Architectural Drift Detection
@@ -13,6 +13,7 @@ Compare the current state of the codebase against the existing architecture map 
 /archmap:diff                    # Full diff, output inline
 /archmap:diff --summary          # Compact summary only
 /archmap:diff --output docs/     # Write detailed diff to docs/architecture-diff.md
+/archmap:diff --json             # Structured JSON for CI integration (jq-parseable, no prose)
 ```
 
 ## Runtime adapter
@@ -135,10 +136,59 @@ Compact one-paragraph summary with counts only.
 #### File Output (--output)
 Write the full diff report to `docs/architecture-diff.md` (or custom path).
 
+#### JSON Mode (--json)
+
+Emit a single JSON object to stdout and **nothing else** — no markdown, no prose, no progress logs. This is the mode CI pipelines should pipe into `jq`.
+
+Shape:
+
+```json
+{
+  "project": "my-project",
+  "scanned_at": "2026-04-21T14:32:00Z",
+  "added": [
+    { "id": "new-module", "path": "src/new/", "suggested_tier": "api", "summary": "Handles new API endpoints" }
+  ],
+  "removed": [
+    { "id": "old-module", "path": "src/old/", "tier": "util", "reason": "files no longer exist" }
+  ],
+  "renamed": [
+    { "id": "auth", "from_path": "src/auth/", "to_path": "src/identity/auth/" }
+  ],
+  "resized": [
+    { "id": "auth", "from_lines": 420, "to_lines": 580, "delta_pct": 38 }
+  ],
+  "new_edges": [
+    { "from": "auth", "to": "new-module", "relationship": "imports auth middleware" }
+  ],
+  "broken_edges": [
+    { "from": "old-module", "to": "database" }
+  ],
+  "tier_changes": [
+    { "id": "helpers", "from_tier": "util", "to_tier": "infra" }
+  ],
+  "verdict": "slightly stale"
+}
+```
+
+Field rules:
+
+- `verdict` is one of `"current"` / `"slightly stale"` / `"needs repair"`. Same heuristic as the inline Verdict line (≤2 modules drifted → `slightly stale`; >30% affected → `needs repair`).
+- `scanned_at` is an ISO 8601 timestamp for when the scan ran.
+- Any array that would be empty is emitted as `[]`, not omitted, so `jq '.added | length'` is safe.
+- `--json` wins over `--summary` when both are passed. `--output` is honored: the JSON is written to the output path instead of stdout (file extension should be `.json`).
+
+Minimal CI example (GitHub Actions step):
+
+```bash
+verdict=$(claude /archmap:diff --json | jq -r '.verdict')
+[ "$verdict" = "needs repair" ] && { echo "::error::archmap drift exceeds threshold"; exit 1; }
+```
+
 ## Important
 
 - This command is READ-ONLY — it does NOT modify the existing map
 - The diff is informational — it tells you what changed, not what to do about it
 - For fixing issues, use `/archmap:repair` (full) or `/archmap:focus <module>` (scoped)
 - The "Verdict" line should give an honest assessment: if only 1-2 modules drifted, say "slightly stale"; if >30% of modules are affected, say "needs repair"
-- If the user runs with `--output`, still show the summary inline
+- If the user runs with `--output`, still show the summary inline (**except** when `--json` is also set — JSON mode is stdout/file-only, no prose)

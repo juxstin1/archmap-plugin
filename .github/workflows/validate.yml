@@ -52,12 +52,16 @@ jobs:
             exit 1
           fi
 
-      - name: Validate example .archmap.json (if committed)
+      - name: Validate examples/.archmap.json against schema
+        run: |
+          ajv validate -s schemas/archmap.schema.json -d examples/.archmap.json --spec=draft2020 -c ajv-formats
+
+      - name: Validate project-root .archmap.json (if committed)
         run: |
           if [ -f .archmap.json ]; then
             ajv validate -s schemas/archmap.schema.json -d .archmap.json --spec=draft2020 -c ajv-formats
           else
-            echo "no .archmap.json in repo root — skipping schema validation"
+            echo "no .archmap.json in repo root — skipping project-level validation"
           fi
 
       - name: Plugin and marketplace versions must agree

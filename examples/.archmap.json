@@ -1,0 +1,44 @@
+{
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".git",
+    "vendor",
+    "build",
+    ".next",
+    "coverage",
+    "__pycache__",
+    ".venv"
+  ],
+  "tiers": {
+    "src/api/": "api",
+    "src/ui/": "ui",
+    "src/lib/": "util",
+    "src/cli/": "entry",
+    "tests/": "test",
+    "config/": "config"
+  },
+  "pinned": [
+    "entry",
+    "runtime"
+  ],
+  "output": {
+    "html": "docs/architecture.html",
+    "markdown": "docs/architecture-map.md"
+  },
+  "theme": "dark",
+  "hooks": {
+    "sessionStart": true
+  },
+  "layout": {
+    "respectOverrides": true,
+    "overridePath": ".archmap/layout.json"
+  },
+  "history": {
+    "enabled": true,
+    "autoSnapshotOnRepair": true,
+    "autoSnapshotOnFocus": true,
+    "maxInlineSnapshots": 50,
+    "spillPath": ".archmap/snapshots"
+  }
+}
