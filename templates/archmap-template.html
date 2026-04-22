@@ -1484,6 +1484,9 @@ window.addEventListener('keydown', e => {
      e.key === 'Home' || e.key === 'End')
   ) {
     e.preventDefault();
+    // Drop focus from any previously-clicked tick button so the browser
+    // doesn't also scroll-focus the ticks row on each arrow press.
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     if (e.key === 'ArrowLeft') setSnapshot(currentSnapshot - 1);
     else if (e.key === 'ArrowRight') setSnapshot(currentSnapshot + 1);
     else if (e.key === 'Home') setSnapshot(0);
