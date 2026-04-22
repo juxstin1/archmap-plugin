@@ -1082,7 +1082,12 @@ function setSnapshot(i) {
   layoutOverrides = deepClone(snap.layoutOverrides || {});
 
   captureOriginalPositions(modules);
-  applyLayoutOverrides();
+  // Only the newest snapshot should reflect current-session drags
+  // (persisted in localStorage via applyLayoutOverrides). Historical
+  // snapshots render exactly what is in snap.modules so scrubbing back
+  // is a faithful view of history, not today's layout stamped on
+  // yesterday's graph.
+  if (idx === history.length - 1) applyLayoutOverrides();
   modules.forEach(m => { m.color = tierColor(m.tier); });
 
   // Drop selection/hover if the referenced module isn't in this snapshot.
