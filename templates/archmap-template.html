@@ -333,7 +333,6 @@
 <div id="controls">
   <button onclick="resetView()">Reset View</button>
   <button onclick="toggleEdgeMode()">Toggle Edges</button>
-  <button onclick="toggleLabels()">Toggle Labels</button>
   <button id="edit-btn" onclick="toggleEditMode()" title="Toggle Edit mode (shortcut: E). Drag modules to reposition them. Shift-drag bypasses the 10px grid snap.">Edit</button>
   <button id="save-layout-btn" onclick="openSaveLayoutModal()" style="display:none" title="Save your layout to share with teammates (download JSON) or bake into the HTML (copy patch).">Save</button>
   <button id="reset-layout-btn" onclick="resetLayout()" style="display:none" title="Restore the generated layout. Discards any manual repositioning.">Reset Layout</button>
@@ -608,7 +607,7 @@ let dpr = window.devicePixelRatio || 1;
 let viewX = 0, viewY = 0, viewScale = 1;
 let isDragging = false, dragStartX, dragStartY;
 let hoveredModule = null, selectedModule = null;
-let showEdgeLabels = true, showAllLabels = true;
+let showEdgeLabels = true;
 
 // Edit mode: when true, clicks on modules drag them instead of
 // selecting. Resolved at mousedown; never changes mid-gesture.
@@ -945,7 +944,6 @@ function showDefaultSidebar() {
 
 function resetView() { viewX = 30; viewY = 30; viewScale = 1; selectedModule = null; showDefaultSidebar(); draw(); }
 function toggleEdgeMode() { showEdgeLabels = !showEdgeLabels; draw(); }
-function toggleLabels() { showAllLabels = !showAllLabels; draw(); }
 
 // ── Layout editing ────────────────────────────────────
 
