@@ -107,21 +107,6 @@ Use the Task tool with `subagent_type: archmap:archmap-explorer` to **thoroughly
 
 The agent prompt is defined in `agents/archmap-explorer.md`.
 
-If you must fall back to built-in `Explore`, use this prompt:
-```
-Thoroughly explore the codebase at <path>. For every source file, report:
-- File path and approximate line count
-- Key types defined (structs, classes, enums, interfaces)
-- Key functions (public API, entry points)
-- What it imports from other modules in this project (internal deps only)
-- Its role/responsibility (1 sentence)
-
-Also identify:
-- The overall data flow pipeline (how input becomes output)
-- Module groupings / tiers (which modules form logical layers)
-- The project name and language/framework
-```
-
 ### Phase 2: Design the Graph Layout
 
 From the exploration results, build the visualization data structures. Each module becomes a node, each dependency becomes an edge.
