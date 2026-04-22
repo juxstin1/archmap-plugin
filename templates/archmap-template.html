@@ -473,7 +473,6 @@ const THEMES = {
 };
 
 let T = THEMES.dark;
-let currentThemeName = 'dark';
 
 // ── Project Data (populated per-codebase) ─────────────
 
@@ -568,7 +567,6 @@ function tierColor(tier) { return T.tiers[tier] || T.tiers.entry; }
 
 function applyTheme(name) {
   T = THEMES[name];
-  currentThemeName = name;
   const root = document.documentElement;
   for (const [k, v] of Object.entries(T.css)) root.style.setProperty(k, v);
   modules.forEach(m => { m.color = tierColor(m.tier); });
