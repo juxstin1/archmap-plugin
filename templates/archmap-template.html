@@ -613,7 +613,6 @@ let editMode = false;
 let dragModuleId = null;     // id of module currently being dragged
 let dragOffsetX = 0;         // world-space offset within the module
 let dragOffsetY = 0;
-let layoutDirty = false;     // true once any module has moved from _orig
 
 function resize() {
   const container = document.getElementById('canvas-container');
@@ -805,7 +804,6 @@ canvas.addEventListener('mousemove', e => {
         ny = Math.round(ny / 10) * 10;
       }
       m.x = nx; m.y = ny;
-      layoutDirty = true;
       draw();
     }
     return;
@@ -957,7 +955,7 @@ function persistLayoutToLocal() {
 
 // Does any module currently sit at a non-default position? Compared
 // against _origX/_origY captured at load. Drives Save/Reset button
-// visibility and the layoutDirty flag.
+// visibility.
 function hasLayoutOverrides() {
   return modules.some(m => m.x !== m._origX || m.y !== m._origY);
 }
@@ -990,7 +988,6 @@ function resetLayout() {
   if (!confirm('Reset all manual positions?\n\nThis discards any repositioning you have done and restores the generated layout.')) return;
   clearLocalLayout();
   applyLayoutOverrides();   // re-applies baked overrides on top of _orig
-  layoutDirty = false;
   refreshLayoutControls();
   draw();
 }
