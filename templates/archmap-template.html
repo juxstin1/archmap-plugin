@@ -805,6 +805,18 @@ canvas.addEventListener('mousemove', e => {
         nx = Math.round(nx / 10) * 10;
         ny = Math.round(ny / 10) * 10;
       }
+      // Clamp to a generous envelope around the other modules so a
+      // module can't be dragged so far off-canvas that the user loses
+      // it and has to Reset Layout. 2000-world-unit pad is well beyond
+      // any reasonable layout but short of "gone forever."
+      const DRAG_PAD = 2000;
+      const others = modules.filter(mod => mod.id !== dragModuleId);
+      const minX = (others.length ? Math.min(...others.map(o => o.x)) : 0) - DRAG_PAD;
+      const maxX = (others.length ? Math.max(...others.map(o => o.x + o.w)) : 1200) + DRAG_PAD;
+      const minY = (others.length ? Math.min(...others.map(o => o.y)) : 0) - DRAG_PAD;
+      const maxY = (others.length ? Math.max(...others.map(o => o.y + o.h)) : 800) + DRAG_PAD;
+      nx = Math.max(minX, Math.min(maxX - m.w, nx));
+      ny = Math.max(minY, Math.min(maxY - m.h, ny));
       m.x = nx; m.y = ny;
       draw();
     }
