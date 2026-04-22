@@ -138,6 +138,9 @@ jobs:
           done
           echo "docs: ok"
 
+      - name: Run test harness
+        run: bash tests/run.sh
+
   release:
     name: Draft release on tag
     runs-on: ubuntu-latest
