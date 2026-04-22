@@ -918,7 +918,11 @@ function showDetail(m) {
 }
 
 function legendDotsHtml() {
-  return legendItems.map(li => `<div class="legend-item"><div class="legend-dot" style="background:${safeColor(tierColor(li.tier))}"></div> ${esc(li.label)}</div>`).join('');
+  const usedTiers = new Set(modules.map(m => m.tier));
+  return legendItems
+    .filter(li => usedTiers.has(li.tier))
+    .map(li => `<div class="legend-item"><div class="legend-dot" style="background:${safeColor(tierColor(li.tier))}"></div> ${esc(li.label)}</div>`)
+    .join('');
 }
 
 function pipelineHtml() {
