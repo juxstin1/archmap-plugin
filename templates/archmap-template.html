@@ -604,6 +604,7 @@ const ctx = canvas.getContext('2d');
 let dpr = window.devicePixelRatio || 1;
 let viewX = 0, viewY = 0, viewScale = 1;
 let isDragging = false, dragStartX, dragStartY;
+let mouseDownClientX = 0, mouseDownClientY = 0;
 let hoveredModule = null, selectedModule = null;
 let showEdgeLabels = true;
 
@@ -784,6 +785,7 @@ canvas.addEventListener('mousedown', e => {
   }
 
   isDragging = true; dragStartX = e.clientX - viewX; dragStartY = e.clientY - viewY;
+  mouseDownClientX = e.clientX; mouseDownClientY = e.clientY;
   canvas.style.cursor = 'grabbing';
 });
 
@@ -831,7 +833,7 @@ canvas.addEventListener('mouseup', e => {
   }
 
   if (isDragging) {
-    const dx = Math.abs(e.clientX - (dragStartX + viewX)), dy = Math.abs(e.clientY - (dragStartY + viewY));
+    const dx = Math.abs(e.clientX - mouseDownClientX), dy = Math.abs(e.clientY - mouseDownClientY);
     if (dx < 3 && dy < 3) {
       const rect = canvas.getBoundingClientRect();
       const hit = hitTest(e.clientX - rect.left, e.clientY - rect.top);
@@ -839,7 +841,7 @@ canvas.addEventListener('mouseup', e => {
       else { selectedModule = null; showDefaultSidebar(); }
     }
   }
-  isDragging = false; canvas.style.cursor = hoveredModule ? 'pointer' : 'grab'; draw();
+  isDragging = false; canvas.style.cursor = hoveredModule ? (editMode ? 'move' : 'pointer') : (editMode ? 'crosshair' : 'grab'); draw();
 });
 
 canvas.addEventListener('wheel', e => {
@@ -916,7 +918,11 @@ function showDetail(m) {
 }
 
 function legendDotsHtml() {
-  return legendItems.map(li => `<div class="legend-item"><div class="legend-dot" style="background:${safeColor(tierColor(li.tier))}"></div> ${esc(li.label)}</div>`).join('');
+  const usedTiers = new Set(modules.map(m => m.tier));
+  return legendItems
+    .filter(li => usedTiers.has(li.tier))
+    .map(li => `<div class="legend-item"><div class="legend-dot" style="background:${safeColor(tierColor(li.tier))}"></div> ${esc(li.label)}</div>`)
+    .join('');
 }
 
 function pipelineHtml() {
@@ -1412,6 +1418,7 @@ async function exportAll() {
     const mdName = `${s}-architecture-map.md`;
 
     const pngBlob = await renderToPng(2);
+    if (!pngBlob) throw new Error('PNG render returned no data');
     downloadBlob(pngBlob, pngName);
 
     // Brief pause so browsers don't flag the pair as a rapid-multi-download.
