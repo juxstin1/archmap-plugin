@@ -1414,6 +1414,7 @@ async function exportAll() {
     const mdName = `${s}-architecture-map.md`;
 
     const pngBlob = await renderToPng(2);
+    if (!pngBlob) throw new Error('PNG render returned no data');
     downloadBlob(pngBlob, pngName);
 
     // Brief pause so browsers don't flag the pair as a rapid-multi-download.
