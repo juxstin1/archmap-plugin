@@ -1,0 +1,17 @@
+{
+  "theme": "openai",
+  "hooks": {
+    "sessionStart": false
+  },
+  "exclude": [
+    "node_modules",
+    "target",
+    ".venv"
+  ],
+  "pinned": [
+    "main"
+  ],
+  "tiers": {
+    "src/": "entry"
+  }
+}

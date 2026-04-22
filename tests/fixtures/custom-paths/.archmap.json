@@ -1,0 +1,15 @@
+{
+  "theme": "claude",
+  "output": {
+    "html": "archmap/map.html",
+    "markdown": "archmap/map.md"
+  },
+  "layout": {
+    "respectOverrides": true,
+    "overridePath": "archmap/layout.json"
+  },
+  "history": {
+    "maxInlineSnapshots": 1,
+    "spillPath": "archmap/snapshots"
+  }
+}
