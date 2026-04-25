@@ -336,7 +336,7 @@
   <button id="edit-btn" onclick="toggleEditMode()" title="Toggle Edit mode (shortcut: E). Drag modules to reposition them. Shift-drag bypasses the 10px grid snap.">Edit</button>
   <button id="save-layout-btn" onclick="openSaveLayoutModal()" style="display:none" title="Save your layout to share with teammates (download JSON) or bake into the HTML (copy patch).">Save</button>
   <button id="reset-layout-btn" onclick="resetLayout()" style="display:none" title="Restore the generated layout. Discards any manual repositioning.">Reset Layout</button>
-  <button id="export-btn" onclick="exportAll()" title="Downloads a PNG of the map + a markdown file referencing it. Drop both in your docs/ folder for a shareable pair.">Export</button>
+  <button id="export-btn" onclick="exportAll()" title="Downloads a single zip containing a PNG of the map + a markdown file referencing it. Unzip both into your docs/ folder for a shareable pair.">Export</button>
 </div>
 
 <div id="timeline" title="Timeline scrubber. Arrow keys step between snapshots; Home/End jump to ends.">
@@ -362,6 +362,21 @@
     </div>
     <div class="modal-actions">
       <button onclick="closeSaveLayoutModal()" class="modal-btn secondary">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="reset-layout-modal" class="modal">
+  <div class="modal-backdrop" onclick="closeResetLayoutModal()"></div>
+  <div class="modal-card">
+    <h3>Reset layout?</h3>
+    <p class="modal-desc">
+      This discards every manual position you've dragged and restores the
+      generated layout. Your localStorage layout for this map will be cleared.
+    </p>
+    <div class="modal-actions">
+      <button onclick="confirmResetLayout()" class="modal-btn primary">Reset</button>
+      <button onclick="closeResetLayoutModal()" class="modal-btn secondary">Cancel</button>
     </div>
   </div>
 </div>
@@ -1000,10 +1015,18 @@ function toggleEditMode() {
 }
 
 // Restore every module to its baked-in default position. Drops any
-// localStorage override. Confirm prompt since this is destructive
-// for user-arranged maps.
+// localStorage override. Opens the themed reset modal — destructive
+// action requires explicit confirmation.
 function resetLayout() {
-  if (!confirm('Reset all manual positions?\n\nThis discards any repositioning you have done and restores the generated layout.')) return;
+  const modal = document.getElementById('reset-layout-modal');
+  if (modal) modal.classList.add('open');
+}
+function closeResetLayoutModal() {
+  const modal = document.getElementById('reset-layout-modal');
+  if (modal) modal.classList.remove('open');
+}
+function confirmResetLayout() {
+  closeResetLayoutModal();
   clearLocalLayout();
   applyLayoutOverrides();   // re-applies baked overrides on top of _orig
   refreshLayoutControls();
@@ -1163,6 +1186,9 @@ function updateTimelineUI() {
   if (label) {
     const snap = Array.isArray(history) ? history[currentSnapshot] : null;
     label.textContent = snap ? snapshotHoverText(snap, currentSnapshot) : '';
+    // Mirror to the title attribute so the full version/date/note is
+    // visible on hover when the label ellipsises (max-width: 280px).
+    label.title = label.textContent;
   }
   // Keep the active tick in view when the ticks row overflows.
   const activeEl = document.querySelector('#timeline-ticks .timeline-tick.active');
@@ -1419,10 +1445,93 @@ function renderToPng(scale) {
   return new Promise(res => off.toBlob(res, 'image/png'));
 }
 
+// Minimal STORE-only ZIP writer. No deflate (would balloon the
+// self-contained template). Produces a valid .zip — local file
+// headers + central directory + EOCD + correct CRC-32 — that every
+// modern unzipper (browser, OS, 7zip, GNU unzip) accepts.
+const CRC32_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[i] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(bytes) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) c = CRC32_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function buildZipBlob(files) {
+  // files: [{ name: string, data: Uint8Array }]
+  const enc = new TextEncoder();
+  const parts = [];
+  const central = [];
+  let offset = 0;
+  files.forEach(f => {
+    const nameBytes = enc.encode(f.name);
+    const data = f.data;
+    const crc = crc32(data);
+    const size = data.length;
+
+    const lfh = new DataView(new ArrayBuffer(30));
+    lfh.setUint32(0, 0x04034b50, true);   // local file header signature
+    lfh.setUint16(4, 20, true);           // version needed
+    lfh.setUint16(6, 0x0800, true);       // UTF-8 filename flag
+    lfh.setUint16(8, 0, true);            // compression: STORE
+    lfh.setUint16(10, 0, true);           // mod time
+    lfh.setUint16(12, 0x0021, true);      // mod date 1980-01-01
+    lfh.setUint32(14, crc, true);
+    lfh.setUint32(18, size, true);        // compressed size
+    lfh.setUint32(22, size, true);        // uncompressed size
+    lfh.setUint16(26, nameBytes.length, true);
+    lfh.setUint16(28, 0, true);           // extra length
+    parts.push(new Uint8Array(lfh.buffer), nameBytes, data);
+
+    const cdh = new DataView(new ArrayBuffer(46));
+    cdh.setUint32(0, 0x02014b50, true);   // central dir signature
+    cdh.setUint16(4, 20, true);
+    cdh.setUint16(6, 20, true);
+    cdh.setUint16(8, 0x0800, true);
+    cdh.setUint16(10, 0, true);
+    cdh.setUint16(12, 0, true);
+    cdh.setUint16(14, 0x0021, true);
+    cdh.setUint32(16, crc, true);
+    cdh.setUint32(20, size, true);
+    cdh.setUint32(24, size, true);
+    cdh.setUint16(28, nameBytes.length, true);
+    cdh.setUint16(30, 0, true);
+    cdh.setUint16(32, 0, true);
+    cdh.setUint16(34, 0, true);
+    cdh.setUint16(36, 0, true);
+    cdh.setUint32(38, 0, true);
+    cdh.setUint32(42, offset, true);      // local header offset
+    central.push(new Uint8Array(cdh.buffer), nameBytes);
+
+    offset += 30 + nameBytes.length + size;
+  });
+  const localSize = offset;
+  let centralSize = 0;
+  central.forEach(c => centralSize += c.length);
+
+  const eocd = new DataView(new ArrayBuffer(22));
+  eocd.setUint32(0, 0x06054b50, true);    // EOCD signature
+  eocd.setUint16(4, 0, true);
+  eocd.setUint16(6, 0, true);
+  eocd.setUint16(8, files.length, true);
+  eocd.setUint16(10, files.length, true);
+  eocd.setUint32(12, centralSize, true);
+  eocd.setUint32(16, localSize, true);
+  eocd.setUint16(20, 0, true);
+  return new Blob([...parts, ...central, new Uint8Array(eocd.buffer)], { type: 'application/zip' });
+}
+
 // Combined one-click export: PNG of the full graph + markdown that
-// references the PNG as its top-of-file image. Dropping both files
-// in the same directory gives a fully renderable artifact anywhere
-// that understands markdown + PNG (GitHub, Notion, Slack, email).
+// references the PNG as its top-of-file image. Bundled into a single
+// .zip so browsers (Safari, Firefox in strict mode) don't block the
+// second file as a rapid-multi-download. Unzipping yields both files
+// at the top level — the markdown's `./<png>` reference resolves.
 async function exportAll() {
   const btn = document.getElementById('export-btn');
   const original = btn ? btn.textContent : null;
@@ -1433,16 +1542,18 @@ async function exportAll() {
     const s = slug(rawName);
     const pngName = `${s}-architecture.png`;
     const mdName = `${s}-architecture-map.md`;
+    const zipName = `${s}-archmap.zip`;
 
     const pngBlob = await renderToPng(2);
     if (!pngBlob) throw new Error('PNG render returned no data');
-    downloadBlob(pngBlob, pngName);
 
-    // Brief pause so browsers don't flag the pair as a rapid-multi-download.
-    await new Promise(r => setTimeout(r, 300));
-
-    const md = buildMarkdown('./' + pngName);
-    downloadBlob(new Blob([md], { type: 'text/markdown' }), mdName);
+    const pngBytes = new Uint8Array(await pngBlob.arrayBuffer());
+    const mdBytes = new TextEncoder().encode(buildMarkdown('./' + pngName));
+    const zipBlob = buildZipBlob([
+      { name: pngName, data: pngBytes },
+      { name: mdName, data: mdBytes },
+    ]);
+    downloadBlob(zipBlob, zipName);
 
     if (btn) {
       btn.textContent = 'Exported \u2713';
@@ -1468,7 +1579,12 @@ function exportMarkdown() {
 
 buildThemePicker();
 const saved = (() => { try { return localStorage.getItem('archmap-theme'); } catch { return null; } })();
-applyTheme(saved && THEMES[saved] ? saved : 'dark');
+// First-time default follows the OS color-scheme preference. Once the
+// user picks a theme it persists in localStorage and wins over the OS.
+const prefersLight = (() => {
+  try { return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches; } catch { return false; }
+})();
+applyTheme(saved && THEMES[saved] ? saved : (prefersLight ? 'light' : 'dark'));
 viewX = 30; viewY = 30;
 resize();
 
@@ -1484,9 +1600,12 @@ window.addEventListener('keydown', e => {
     e.preventDefault();
     toggleEditMode();
   } else if (e.key === 'Escape') {
-    const modal = document.getElementById('save-layout-modal');
-    if (modal && modal.classList.contains('open')) {
+    const saveModal = document.getElementById('save-layout-modal');
+    const resetModal = document.getElementById('reset-layout-modal');
+    if (saveModal && saveModal.classList.contains('open')) {
       closeSaveLayoutModal();
+    } else if (resetModal && resetModal.classList.contains('open')) {
+      closeResetLayoutModal();
     } else if (editMode) {
       toggleEditMode();
     }

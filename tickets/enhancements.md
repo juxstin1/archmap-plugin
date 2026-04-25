@@ -39,7 +39,7 @@ Two blue modules from different tiers on the same canvas is confusing. Legend be
 
 ### E4. Timeline label has no overflow tooltip
 **Severity:** low
-**Status:** open
+**Status:** done (6692724)
 **Location:** `templates/archmap-template.html:266-276` (CSS), `:1149` (label population)
 **Problem:** `#timeline-label` has `overflow: hidden; text-overflow: ellipsis; max-width: 280px`. When the version+date+note combo exceeds 280px, the ellipsis hides the tail. No `title` attribute on the label span, so users can't see the full text.
 **Fix:** Set `label.title = label.textContent` in `updateTimelineUI` so hover gives the full version/date/note.
@@ -120,7 +120,7 @@ Commit baselines. PR CI diffs them.
 
 ### E11. `exportAll` fires two download prompts; should be one zip
 **Severity:** low
-**Status:** open
+**Status:** done (bea9e14)
 **Location:** `templates/archmap-template.html:1410-1441`
 **Problem:** PNG downloads, 300ms pause, MD downloads. Some browsers (Safari, Firefox with strict settings) block the second as "multi-download." User sees only the PNG and doesn't know they missed the MD.
 **Fix:** Bundle both into a single `.zip` using a minimal pure-JS zip writer (e.g., `fflate`'s zipSync ported inline — keep self-contained). One download, one prompt.
@@ -140,7 +140,7 @@ Commit baselines. PR CI diffs them.
 
 ### E13. `resetLayout` uses native `confirm()`
 **Severity:** low
-**Status:** open
+**Status:** done (a81cbfc)
 **Location:** `templates/archmap-template.html:994`
 **Problem:** Native `confirm` is jarring, modal-blocking, and doesn't match the existing modal design (`save-layout-modal`). Inconsistent UX for a destructive action.
 **Fix:** Replicate the Save Layout modal pattern for Reset. Primary button "Reset", secondary button "Cancel", match the existing styling.
@@ -150,7 +150,7 @@ Commit baselines. PR CI diffs them.
 
 ### E14. Respect `prefers-color-scheme` on first load
 **Severity:** low
-**Status:** open
+**Status:** done (0193fbf)
 **Location:** `templates/archmap-template.html:1453-1454`
 **Problem:** First-time users always get `dark` regardless of OS preference.
 **Fix:** `const saved = localStorage.getItem('archmap-theme'); const preferLight = window.matchMedia('(prefers-color-scheme: light)').matches; applyTheme(saved && THEMES[saved] ? saved : (preferLight ? 'light' : 'dark'));`
