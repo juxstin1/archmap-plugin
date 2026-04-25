@@ -615,7 +615,11 @@ function buildThemePicker() {
 // ── Canvas Setup ──────────────────────────────────────
 
 const canvas = document.getElementById('graph');
-const ctx = canvas.getContext('2d');
+// `let` (not `const`) because renderToPng temporarily rebinds ctx to an
+// offscreen canvas during export, then restores it. With `const` the
+// reassignment threw "Assignment to constant variable", silently breaking
+// the Export button — pre-existing since the original export landed.
+let ctx = canvas.getContext('2d');
 let dpr = window.devicePixelRatio || 1;
 let viewX = 0, viewY = 0, viewScale = 1;
 let isDragging = false, dragStartX, dragStartY;
