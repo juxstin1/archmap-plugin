@@ -1163,6 +1163,9 @@ function updateTimelineUI() {
   if (label) {
     const snap = Array.isArray(history) ? history[currentSnapshot] : null;
     label.textContent = snap ? snapshotHoverText(snap, currentSnapshot) : '';
+    // Mirror to the title attribute so the full version/date/note is
+    // visible on hover when the label ellipsises (max-width: 280px).
+    label.title = label.textContent;
   }
   // Keep the active tick in view when the ticks row overflows.
   const activeEl = document.querySelector('#timeline-ticks .timeline-tick.active');
