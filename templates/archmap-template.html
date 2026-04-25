@@ -10,7 +10,7 @@
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: 'Segoe UI', -apple-system, sans-serif;
+    font-family: var(--font-body, ui-sans-serif, system-ui, -apple-system, sans-serif);
     overflow: hidden;
     height: 100vh;
     width: 100vw;
@@ -96,8 +96,9 @@
 
   #sidebar .detail-section ul li code {
     background: var(--code-bg); padding: 1px 6px; border-radius: 3px;
-    font-size: 12px; font-family: 'Cascadia Code', 'Fira Code', monospace; color: var(--text);
+    font-size: 12px; font-family: var(--font-mono, ui-monospace, monospace); color: var(--text);
   }
+
 
   /* Used By / Depends On entries: clickable, jumps to the referenced
      module. Hover and keyboard-focus ring match the existing accent. */
@@ -193,7 +194,7 @@
   .pipe-label {
     background: var(--pipe-bg); border: 1px solid var(--pipe-border);
     border-radius: 4px; padding: 2px 8px;
-    font-family: 'Cascadia Code', monospace; font-size: 11px; color: var(--text);
+    font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; color: var(--text);
   }
 
   #controls {
@@ -263,7 +264,7 @@
     background: var(--code-bg);
     padding: 1px 5px;
     border-radius: 3px;
-    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-family: var(--font-mono, ui-monospace, monospace);
     font-size: 11px;
   }
   .modal-actions {
@@ -296,7 +297,7 @@
     background: rgba(0, 0, 0, 0.2);
     padding: 1px 5px;
     border-radius: 3px;
-    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-family: var(--font-mono, ui-monospace, monospace);
     font-size: 11px;
   }
   .modal-hint {
@@ -309,7 +310,7 @@
     background: var(--code-bg);
     padding: 1px 5px;
     border-radius: 3px;
-    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-family: var(--font-mono, ui-monospace, monospace);
     font-size: 10px;
   }
 
@@ -340,7 +341,7 @@
   #timeline-label {
     font-size: 11px;
     color: var(--text-dim);
-    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-family: var(--font-mono, ui-monospace, monospace);
     white-space: nowrap;
     min-width: 0;
     max-width: 280px;
@@ -464,20 +465,38 @@
 //   tiers.*   → mapped onto each module's .color by tier name
 //   canvas.*  → used directly in canvas draw calls
 
+// Per-theme typography (E1). Stacks lean on graceful system fallbacks
+// so the template stays self-contained — no embedded fonts, no CDN.
+// Each theme has a *distinct intent* even when only the platform
+// fallbacks are present.
+//   dark   → brutalist mono (IBM Plex Mono / SF Mono / ui-monospace)
+//   light  → editorial serif (Charter / Source Serif / Georgia)
+//   claude → warm serif (Lora / Source Serif / Tiempos / Georgia)
+//   openai → technical sans (IBM Plex Sans / system-ui)
+// The mono stack is shared across themes for code-style snippets.
+const FONT_MONO_DEFAULT = "'JetBrains Mono', 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace";
+const FONT_MONO_DARK    = "'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace";
+
 const THEMES = {
   dark: {
     name: 'Dark',
+    fonts: {
+      body: FONT_MONO_DARK,
+      mono: FONT_MONO_DARK,
+    },
     css: {
       '--bg':'#0d1117','--surface':'#161b22','--border':'#30363d',
       '--text':'#c9d1d9','--text-dim':'#8b949e','--accent':'#58a6ff',
       '--accent-glow':'rgba(88,166,255,0.35)','--code-bg':'rgba(110,118,129,0.15)',
       '--pipe-bg':'rgba(88,166,255,0.1)','--pipe-border':'rgba(88,166,255,0.2)',
     },
+    // E2: every tier gets a distinct hue. No two values share a color
+    // within a theme — legend stays informative on canvas.
     tiers: {
-      entry:'#58a6ff', frontend:'#3fb950', ir:'#bc8cff', codegen:'#d29922',
-      runtime:'#f85149', lint:'#f778ba', driver:'#39d353',
-      data:'#58a6ff', api:'#d29922', ui:'#f778ba', infra:'#8b949e',
-      util:'#8b949e', test:'#39d353', config:'#bc8cff',
+      entry:'#58a6ff',    frontend:'#3fb950', ir:'#7c87ff',     codegen:'#d29922',
+      runtime:'#f85149',  lint:'#ee64bd',     driver:'#5cd1ff',
+      data:'#2ec4b6',     api:'#ff8c42',      ui:'#b97aff',     infra:'#6e7681',
+      util:'#b0b8c0',     test:'#a3e635',     config:'#fbbf24',
     },
     canvas: {
       grid:'rgba(48,54,61,0.3)', tierLabel:'rgba(139,148,158,0.45)',
@@ -491,6 +510,10 @@ const THEMES = {
   },
   light: {
     name: 'Light',
+    fonts: {
+      body: "'Charter', 'Iowan Old Style', 'Source Serif Pro', 'Source Serif', Georgia, ui-serif, serif",
+      mono: FONT_MONO_DEFAULT,
+    },
     css: {
       '--bg':'#f6f8fa','--surface':'#ffffff','--border':'#d1d9e0',
       '--text':'#1f2328','--text-dim':'#656d76','--accent':'#0969da',
@@ -498,10 +521,10 @@ const THEMES = {
       '--pipe-bg':'rgba(9,105,218,0.06)','--pipe-border':'rgba(9,105,218,0.15)',
     },
     tiers: {
-      entry:'#0969da', frontend:'#1a7f37', ir:'#8250df', codegen:'#bf8700',
-      runtime:'#cf222e', lint:'#bf3989', driver:'#1a7f37',
-      data:'#0969da', api:'#bf8700', ui:'#bf3989', infra:'#656d76',
-      util:'#656d76', test:'#1a7f37', config:'#8250df',
+      entry:'#0969da',    frontend:'#1a7f37', ir:'#5a4eff',     codegen:'#bf8700',
+      runtime:'#cf222e',  lint:'#d92896',     driver:'#0598c4',
+      data:'#047e6e',     api:'#d97706',      ui:'#8b3aff',     infra:'#656d76',
+      util:'#8c959f',     test:'#65a30d',     config:'#c2a000',
     },
     canvas: {
       grid:'rgba(208,215,222,0.5)', tierLabel:'rgba(101,109,118,0.5)',
@@ -515,30 +538,42 @@ const THEMES = {
   },
   claude: {
     name: 'Claude',
+    fonts: {
+      body: "'Lora', 'Source Serif Pro', 'Tiempos', Georgia, ui-serif, serif",
+      mono: FONT_MONO_DEFAULT,
+    },
+    // E3: aligned with Anthropic's published brand palette
+    // (#141413 dark, #faf9f5 cream, #d97757 orange, #6a9bcc blue,
+    // #788c5d green). Surfaces are warm-shifted neutrals around the
+    // brand dark; tier colors derive from the brand triad.
     css: {
-      '--bg':'#1c1510','--surface':'#261e17','--border':'#3d3028',
-      '--text':'#e8ddd3','--text-dim':'#a89680','--accent':'#d4874b',
-      '--accent-glow':'rgba(212,135,75,0.3)','--code-bg':'rgba(168,150,128,0.12)',
-      '--pipe-bg':'rgba(212,135,75,0.08)','--pipe-border':'rgba(212,135,75,0.2)',
+      '--bg':'#141413','--surface':'#1f1d1a','--border':'#3a3530',
+      '--text':'#faf9f5','--text-dim':'#b3a99a','--accent':'#d97757',
+      '--accent-glow':'rgba(217,119,87,0.32)','--code-bg':'rgba(179,169,154,0.13)',
+      '--pipe-bg':'rgba(217,119,87,0.08)','--pipe-border':'rgba(217,119,87,0.2)',
     },
     tiers: {
-      entry:'#d4874b', frontend:'#8fba5a', ir:'#c4a0e8', codegen:'#e0b44c',
-      runtime:'#e06c5a', lint:'#d48fb5', driver:'#6bbf7b',
-      data:'#d4874b', api:'#e0b44c', ui:'#d48fb5', infra:'#a89680',
-      util:'#a89680', test:'#6bbf7b', config:'#c4a0e8',
+      entry:'#d97757',    frontend:'#788c5d', ir:'#b380c4',     codegen:'#d4a64f',
+      runtime:'#c4515c',  lint:'#d68aa0',     driver:'#6a9bcc',
+      data:'#4d9b8a',     api:'#e89844',      ui:'#c485d0',     infra:'#8a7d6e',
+      util:'#b8aea2',     test:'#95a86a',     config:'#c8a248',
     },
     canvas: {
-      grid:'rgba(61,48,40,0.4)', tierLabel:'rgba(168,150,128,0.45)',
-      edgeDim:'rgba(61,48,40,0.2)', edgeNormal:'rgba(120,100,85,0.6)',
-      edgeLabelDim:'rgba(168,150,128,0.35)', edgeLabelHi:'rgba(168,150,128,0.8)',
-      lineCountDim:'rgba(168,150,128,0.6)', lineCountHi:'rgba(232,221,211,0.8)',
-      barTrack:'rgba(168,150,128,0.15)', labelHi:'#faf0e6',
-      ambientGlow:'rgba(212,135,75,0.07)',
+      grid:'rgba(58,53,48,0.4)', tierLabel:'rgba(179,169,154,0.45)',
+      edgeDim:'rgba(58,53,48,0.2)', edgeNormal:'rgba(120,100,85,0.6)',
+      edgeLabelDim:'rgba(179,169,154,0.35)', edgeLabelHi:'rgba(179,169,154,0.8)',
+      lineCountDim:'rgba(179,169,154,0.6)', lineCountHi:'rgba(250,249,245,0.8)',
+      barTrack:'rgba(179,169,154,0.15)', labelHi:'#faf9f5',
+      ambientGlow:'rgba(217,119,87,0.07)',
     },
-    swatch:['#1c1510','#d4874b','#8fba5a','#e06c5a'],
+    swatch:['#141413','#d97757','#788c5d','#6a9bcc'],
   },
   openai: {
     name: 'OpenAI',
+    fonts: {
+      body: "'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, sans-serif",
+      mono: "'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace",
+    },
     css: {
       '--bg':'#0d0d0d','--surface':'#171717','--border':'#2f2f2f',
       '--text':'#ececec','--text-dim':'#9a9a9a','--accent':'#10a37f',
@@ -546,10 +581,10 @@ const THEMES = {
       '--pipe-bg':'rgba(16,163,127,0.08)','--pipe-border':'rgba(16,163,127,0.2)',
     },
     tiers: {
-      entry:'#10a37f', frontend:'#5bb5e6', ir:'#b48eda', codegen:'#e6b44c',
-      runtime:'#ef6461', lint:'#e48bc2', driver:'#4cc9a0',
-      data:'#10a37f', api:'#e6b44c', ui:'#e48bc2', infra:'#9a9a9a',
-      util:'#9a9a9a', test:'#4cc9a0', config:'#b48eda',
+      entry:'#10a37f',    frontend:'#5bb5e6', ir:'#7c66ff',     codegen:'#e6b44c',
+      runtime:'#ef6461',  lint:'#e57db8',     driver:'#4cc9a0',
+      data:'#2dbcb1',     api:'#f59e0b',      ui:'#b48eda',     infra:'#6a6a6a',
+      util:'#adadad',     test:'#84cc16',     config:'#fbc02d',
     },
     canvas: {
       grid:'rgba(47,47,47,0.4)', tierLabel:'rgba(154,154,154,0.45)',
@@ -660,6 +695,12 @@ function applyTheme(name) {
   T = THEMES[name];
   const root = document.documentElement;
   for (const [k, v] of Object.entries(T.css)) root.style.setProperty(k, v);
+  // E1: per-theme typography. Stylesheets read --font-body / --font-mono
+  // so every UI surface picks up the swap; canvas reads T.fonts directly.
+  if (T.fonts) {
+    root.style.setProperty('--font-body', T.fonts.body);
+    root.style.setProperty('--font-mono', T.fonts.mono);
+  }
   modules.forEach(m => { m.color = tierColor(m.tier); });
   document.querySelectorAll('.theme-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.theme === name);
@@ -782,7 +823,7 @@ function drawGrid(W, H) {
 }
 
 function drawTierLabels() {
-  ctx.font = '11px "Segoe UI"'; ctx.fillStyle = T.canvas.tierLabel;
+  ctx.font = `11px ${T.fonts.body}`; ctx.fillStyle = T.canvas.tierLabel;
   tierLabels.forEach(t => ctx.fillText(t.label, t.x, t.y));
 }
 
@@ -806,12 +847,12 @@ function drawModule(m) {
   ctx.fill();
 
   ctx.fillStyle = isHovered || isSelected ? T.canvas.labelHi : m.color;
-  ctx.font = 'bold 13px "Cascadia Code", "Fira Code", monospace';
+  ctx.font = `bold 13px ${T.fonts.mono}`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(m.label, m.x + m.w / 2, m.y + m.h / 2 - 8);
 
   ctx.fillStyle = isHovered || isSelected ? T.canvas.lineCountHi : T.canvas.lineCountDim;
-  ctx.font = '10px "Segoe UI"';
+  ctx.font = `10px ${T.fonts.body}`;
   ctx.fillText(m.subtitle || (m.lines + ' lines'), m.x + m.w / 2, m.y + m.h / 2 + 8);
 
   const maxLines = Math.max(...modules.map(mod => mod.lines));
@@ -848,7 +889,7 @@ function drawEdge(e) {
   if (showEdgeLabels && !isDimmed && e.label) {
     const lx = (fp.x + tp.x) / 2 + (tp.y - fp.y) * 0.05;
     const ly = (fp.y + tp.y) / 2 - (tp.x - fp.x) * 0.05;
-    ctx.font = '9px "Segoe UI"';
+    ctx.font = `9px ${T.fonts.body}`;
     ctx.fillStyle = isHighlighted ? T.canvas.edgeLabelHi : T.canvas.edgeLabelDim;
     ctx.textAlign = 'center'; ctx.fillText(e.label, lx, ly - 4); ctx.textAlign = 'left';
   }
@@ -1050,7 +1091,7 @@ function showDetail(m) {
 
   let html = `
     <div class="detail-title" style="color:${mColor}">${esc(m.label)}</div>
-    <div class="detail-subtitle">${esc(m.desc || '')} &middot; ${m.lines | 0} lines &middot; <span id="inspector-xy" style="font-family:'Cascadia Code','Fira Code',monospace; font-size:11px; ${moved ? 'color:var(--text); font-weight:600;' : 'color:var(--text-dim);'}">${xyText}</span></div>
+    <div class="detail-subtitle">${esc(m.desc || '')} &middot; ${m.lines | 0} lines &middot; <span id="inspector-xy" style="font-family:var(--font-mono, ui-monospace, monospace); font-size:11px; ${moved ? 'color:var(--text); font-weight:600;' : 'color:var(--text-dim);'}">${xyText}</span></div>
     <div class="maturity-bar">
       ${[1,2,3,4,5].map(i => `<div class="maturity-seg" style="background:${i <= maturity ? mColor : 'var(--border)'}"></div>`).join('')}
     </div>
