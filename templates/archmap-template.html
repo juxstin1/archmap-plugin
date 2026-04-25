@@ -677,6 +677,7 @@ function buildThemePicker() {
   for (const [key, theme] of Object.entries(THEMES)) {
     const btn = document.createElement('button');
     btn.className = 'theme-btn'; btn.dataset.theme = key; btn.title = theme.name;
+    btn.setAttribute('aria-label', `Theme: ${theme.name}`);
     btn.onclick = () => applyTheme(key);
     const [tl, tr, bl, br] = theme.swatch;
     btn.innerHTML = `
@@ -686,6 +687,25 @@ function buildThemePicker() {
       <div class="swatch-br" style="background:${br}"></div>`;
     picker.appendChild(btn);
   }
+  // E12: arrow-key cycling within the theme picker. ←/→ moves focus
+  // to prev/next button (with wrap), applies that theme, and keeps
+  // keyboard focus on the new active swatch.
+  picker.setAttribute('role', 'radiogroup');
+  picker.setAttribute('aria-label', 'Theme');
+  picker.addEventListener('keydown', e => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    const buttons = Array.from(picker.querySelectorAll('.theme-btn'));
+    if (!buttons.length) return;
+    const cur = buttons.indexOf(document.activeElement);
+    if (cur < 0) return;
+    e.preventDefault();
+    const next = e.key === 'ArrowRight'
+      ? (cur + 1) % buttons.length
+      : (cur - 1 + buttons.length) % buttons.length;
+    const target = buttons[next];
+    target.focus();
+    applyTheme(target.dataset.theme);
+  });
 }
 
 // ── Canvas Setup ──────────────────────────────────────
@@ -705,6 +725,16 @@ let editMode = false;
 let dragModuleId = null;     // id of module currently being dragged
 let dragOffsetX = 0;         // world-space offset within the module
 let dragOffsetY = 0;
+let dragStartPosX = 0;       // module's pre-drag world coords; used by
+let dragStartPosY = 0;       // E10 to push an undo entry at mouseup.
+
+// E10: drag-position undo/redo. Each entry is
+// { id, beforeX, beforeY, afterX, afterY }. Capped at MAX_UNDO so a
+// runaway drag-spam can't exhaust memory. New drags clear the redo
+// stack — standard linear-history undo semantics.
+const MAX_UNDO = 100;
+const dragUndoStack = [];
+const dragRedoStack = [];
 
 function resize() {
   const container = document.getElementById('canvas-container');
@@ -869,6 +899,10 @@ canvas.addEventListener('mousedown', e => {
       const w = screenToWorld(sx, sy);
       dragOffsetX = w.x - hit.x;
       dragOffsetY = w.y - hit.y;
+      // E10: snapshot the module's pre-drag position so the mouseup
+      // handler can push an undo entry only if the drag actually moved.
+      dragStartPosX = hit.x;
+      dragStartPosY = hit.y;
       canvas.style.cursor = 'grabbing';
       return;
     }
@@ -937,6 +971,19 @@ canvas.addEventListener('mouseup', e => {
   // End a drag-to-reposition: commit current positions to localStorage
   // and refresh the Save/Reset UI state.
   if (dragModuleId) {
+    // E10: push an undo entry only if the drag actually moved the module.
+    // No-move clicks shouldn't pollute the undo stack with a no-op.
+    const m = modules.find(mod => mod.id === dragModuleId);
+    if (m && (Math.round(m.x) !== Math.round(dragStartPosX) || Math.round(m.y) !== Math.round(dragStartPosY))) {
+      dragUndoStack.push({
+        id: dragModuleId,
+        beforeX: dragStartPosX, beforeY: dragStartPosY,
+        afterX: m.x, afterY: m.y,
+      });
+      if (dragUndoStack.length > MAX_UNDO) dragUndoStack.shift();
+      // Linear history: a fresh edit invalidates the redo branch.
+      dragRedoStack.length = 0;
+    }
     persistLayoutToLocal();
     refreshLayoutControls();
     dragModuleId = null;
@@ -1082,6 +1129,44 @@ function selectAndFocus(id) {
   selectedModule = id;
   centerOnModule(m);
   showDetail(m);
+}
+
+// E10: drag-position undo/redo. Apply the recorded before/after coords
+// to the module and refresh the live UI. Skips silently if the module
+// has been removed (e.g. snapshot scrubbed) so undo can't crash on
+// stale entries.
+function applyDragHistory(entry, useBefore) {
+  const m = modules.find(mod => mod.id === entry.id);
+  if (!m) return false;
+  m.x = useBefore ? entry.beforeX : entry.afterX;
+  m.y = useBefore ? entry.beforeY : entry.afterY;
+  persistLayoutToLocal();
+  refreshLayoutControls();
+  draw();
+  // Refresh inspector XY if this module is open.
+  if (selectedModule === entry.id) showDetail(m);
+  return true;
+}
+function undoLastDrag() {
+  while (dragUndoStack.length) {
+    const entry = dragUndoStack.pop();
+    if (applyDragHistory(entry, true)) {
+      dragRedoStack.push(entry);
+      return true;
+    }
+    // Module gone — drop the entry and try the next one.
+  }
+  return false;
+}
+function redoLastDrag() {
+  while (dragRedoStack.length) {
+    const entry = dragRedoStack.pop();
+    if (applyDragHistory(entry, false)) {
+      dragUndoStack.push(entry);
+      return true;
+    }
+  }
+  return false;
 }
 
 // ── Controls ──────────────────────────────────────────
@@ -1733,6 +1818,19 @@ resize();
 window.addEventListener('keydown', e => {
   const tag = e.target && e.target.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) return;
+  // E10: Ctrl+Z / Cmd+Z undo last drag, Ctrl+Shift+Z (or Ctrl+Y) redo.
+  // Threaded before the metaKey/ctrlKey early-return below so it can
+  // catch the modifier combo.
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'z' || e.key === 'Z')) {
+    e.preventDefault();
+    if (e.shiftKey) redoLastDrag(); else undoLastDrag();
+    return;
+  }
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === 'y' || e.key === 'Y')) {
+    e.preventDefault();
+    redoLastDrag();
+    return;
+  }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.key === 'e' || e.key === 'E') {
     e.preventDefault();
