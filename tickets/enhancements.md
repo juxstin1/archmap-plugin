@@ -110,7 +110,7 @@ Commit baselines. PR CI diffs them.
 
 ### E10. Drag undo/redo
 **Severity:** low
-**Status:** open
+**Status:** done (0ea9d24)
 **Location:** `templates/archmap-template.html:826-836` (mouseup), new keyboard binding
 **Problem:** Reset Layout is an all-or-nothing hammer. A user who drags 10 modules then misplaces the 11th has no way back except reset-and-redo-everything.
 **Fix:** Stack each drag's before/after positions in a capped array. `Ctrl+Z` / `Cmd+Z` pops and reverses. `Ctrl+Shift+Z` redoes.
@@ -130,7 +130,7 @@ Commit baselines. PR CI diffs them.
 
 ### E12. Theme picker has no keyboard navigation
 **Severity:** low
-**Status:** open
+**Status:** done (0ea9d24)
 **Location:** `templates/archmap-template.html:587-601`
 **Problem:** Theme buttons are focusable `<button>` elements (Tab reaches them), but there's no arrow-key cycling. User has to Tab across them or click.
 **Fix:** Add `←`/`→` handling within the theme picker (or a top-level shortcut `T` to cycle). Left cycles to previous theme, Right to next. Wraps.
