@@ -366,6 +366,21 @@
   </div>
 </div>
 
+<div id="reset-layout-modal" class="modal">
+  <div class="modal-backdrop" onclick="closeResetLayoutModal()"></div>
+  <div class="modal-card">
+    <h3>Reset layout?</h3>
+    <p class="modal-desc">
+      This discards every manual position you've dragged and restores the
+      generated layout. Your localStorage layout for this map will be cleared.
+    </p>
+    <div class="modal-actions">
+      <button onclick="confirmResetLayout()" class="modal-btn primary">Reset</button>
+      <button onclick="closeResetLayoutModal()" class="modal-btn secondary">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── Theme Definitions ─────────────────────────────────
 // All visual colors flow through T (the active theme).
@@ -1000,10 +1015,18 @@ function toggleEditMode() {
 }
 
 // Restore every module to its baked-in default position. Drops any
-// localStorage override. Confirm prompt since this is destructive
-// for user-arranged maps.
+// localStorage override. Opens the themed reset modal — destructive
+// action requires explicit confirmation.
 function resetLayout() {
-  if (!confirm('Reset all manual positions?\n\nThis discards any repositioning you have done and restores the generated layout.')) return;
+  const modal = document.getElementById('reset-layout-modal');
+  if (modal) modal.classList.add('open');
+}
+function closeResetLayoutModal() {
+  const modal = document.getElementById('reset-layout-modal');
+  if (modal) modal.classList.remove('open');
+}
+function confirmResetLayout() {
+  closeResetLayoutModal();
   clearLocalLayout();
   applyLayoutOverrides();   // re-applies baked overrides on top of _orig
   refreshLayoutControls();
@@ -1492,9 +1515,12 @@ window.addEventListener('keydown', e => {
     e.preventDefault();
     toggleEditMode();
   } else if (e.key === 'Escape') {
-    const modal = document.getElementById('save-layout-modal');
-    if (modal && modal.classList.contains('open')) {
+    const saveModal = document.getElementById('save-layout-modal');
+    const resetModal = document.getElementById('reset-layout-modal');
+    if (saveModal && saveModal.classList.contains('open')) {
       closeSaveLayoutModal();
+    } else if (resetModal && resetModal.classList.contains('open')) {
+      closeResetLayoutModal();
     } else if (editMode) {
       toggleEditMode();
     }
