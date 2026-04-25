@@ -1471,7 +1471,12 @@ function exportMarkdown() {
 
 buildThemePicker();
 const saved = (() => { try { return localStorage.getItem('archmap-theme'); } catch { return null; } })();
-applyTheme(saved && THEMES[saved] ? saved : 'dark');
+// First-time default follows the OS color-scheme preference. Once the
+// user picks a theme it persists in localStorage and wins over the OS.
+const prefersLight = (() => {
+  try { return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches; } catch { return false; }
+})();
+applyTheme(saved && THEMES[saved] ? saved : (prefersLight ? 'light' : 'dark'));
 viewX = 30; viewY = 30;
 resize();
 
