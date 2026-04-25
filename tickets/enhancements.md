@@ -6,7 +6,7 @@ Improvements to existing behavior. 17 items. Not bugs — the code works, but co
 
 ### E1. Adopt `frontend-design` aesthetic
 **Severity:** medium
-**Status:** open
+**Status:** done (b1761e4)
 **Location:** `templates/archmap-template.html:13, :99, :123, :193, :226, :239, :691`
 **Problem:** Still defaults to `'Segoe UI'` / `'Cascadia Code'` / `'Fira Code'`. Anthropic's `frontend-design` skill (277k+ installs) explicitly flags Inter/Roboto/Arial/Segoe as "AI slop" fonts. Every map looks like the same template.
 **Fix:** Per-theme distinctive font pairing — e.g., `dark` → Space Mono / IBM Plex (brutalist), `light` → Fraunces / JetBrains Mono (editorial), `claude` → Lora / Poppins (warm, matches brand-guidelines), `openai` → Berkeley Mono / Söhne-alt (technical). Embed minimal woff2 files to keep self-contained, or commit to carefully-picked system fallbacks.
@@ -16,7 +16,7 @@ Improvements to existing behavior. 17 items. Not bugs — the code works, but co
 
 ### E2. Resolve tier-color collisions in every theme
 **Severity:** medium
-**Status:** open
+**Status:** done (b1761e4)
 **Location:** `templates/archmap-template.html:386-391, :410-414, :434-438, :458-462`
 **Problem:** Each theme has 5-6 tier pairs sharing a color:
 - `dark`: entry/data, codegen/api, lint/ui, frontend/driver/test, infra/util, ir/config
@@ -29,7 +29,7 @@ Two blue modules from different tiers on the same canvas is confusing. Legend be
 
 ### E3. Sync `claude` theme with Anthropic's official brand palette
 **Severity:** low
-**Status:** open
+**Status:** done (b1761e4)
 **Location:** `templates/archmap-template.html:426-449`
 **Problem:** The `claude` theme uses approximation colors (`#d4874b` orange, `#1c1510` bg) that don't match Anthropic's published brand-guidelines palette (`#141413`, `#faf9f5`, `#d97757`, `#6a9bcc`, `#788c5d`). "Inspired by," not on-brand.
 **Fix:** Swap CSS variables to the official hex codes. Remap tier colors to distribute brand orange/blue/green. Consider bg: `#141413` (brand dark) vs current `#1c1510` (warm dark).
