@@ -70,7 +70,7 @@ Commit baselines. PR CI diffs them.
 
 ### E6. Sidebar search / filter box
 **Severity:** medium
-**Status:** open
+**Status:** done (d1d9014)
 **Location:** `templates/archmap-template.html:328-331`
 **Problem:** Navigating 30+ module maps requires pan-hunting. No text filter, no keyboard shortcut to jump to a module.
 **Fix:** Add a search input at the top of the sidebar. On type, filter the legend and show a results list; clicking a result centers the canvas on that module and selects it. Keyboard shortcut `/` or `Ctrl+K` to focus.
@@ -80,7 +80,7 @@ Commit baselines. PR CI diffs them.
 
 ### E7. Show module XY position in inspector
 **Severity:** low
-**Status:** open
+**Status:** done (d1d9014)
 **Location:** `templates/archmap-template.html:881-921` (`showDetail`)
 **Problem:** The inspector shows lines, types, functions, imports, notes — but not the module's current canvas position. Useful when debugging layout issues, composing collision-free placements, or sharing screenshots with coordinates.
 **Fix:** Add a small `x, y` block near the `lines` subtitle. Greyed out in default layout, bolded when position differs from `_origX/_origY`.
@@ -90,7 +90,7 @@ Commit baselines. PR CI diffs them.
 
 ### E8. Clickable dependencies in sidebar pan to the referenced module
 **Severity:** low
-**Status:** open
+**Status:** done (d1d9014)
 **Location:** `templates/archmap-template.html:904-915`
 **Problem:** The "Used By" / "Depends On" lists are plain text. Users have to pan-hunt to the referenced module to inspect it.
 **Fix:** Make each entry a clickable affordance. On click: select the target module, pan/zoom the canvas to center it, update the inspector.
@@ -100,7 +100,7 @@ Commit baselines. PR CI diffs them.
 
 ### E9. Surface current snapshot metadata in default sidebar
 **Severity:** low
-**Status:** open
+**Status:** done (d1d9014)
 **Location:** `templates/archmap-template.html:934-942` (`showDefaultSidebar`)
 **Problem:** When a user scrubs to an older snapshot, the only indicator is the small timeline label. The main sidebar reads "Click a module to inspect it" — same as always. The user doesn't clearly know they're looking at history.
 **Fix:** When `currentSnapshot < history.length - 1`, prepend a banner to the default sidebar: `Viewing v0.3 — 2026-03-15 — "added Stripe"` with a "Return to current" link. Subtle accent color to match the timeline.
