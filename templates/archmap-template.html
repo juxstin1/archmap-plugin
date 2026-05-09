@@ -752,7 +752,10 @@ function buildThemePicker() {
 // ── Canvas Setup ──────────────────────────────────────
 
 const canvas = document.getElementById('graph');
-const ctx = canvas.getContext('2d');
+// `let` rather than `const` because renderToPng() temporarily rebinds this
+// to an offscreen 2D context so the existing draw helpers paint into the
+// export canvas without each helper threading a context parameter.
+let ctx = canvas.getContext('2d');
 let dpr = window.devicePixelRatio || 1;
 let viewX = 0, viewY = 0, viewScale = 1;
 let isDragging = false, dragStartX, dragStartY;
@@ -846,14 +849,24 @@ function drawModule(m) {
   roundRect(m.x + 1, m.y + 1, m.w - 2, 2, 1);
   ctx.fill();
 
-  ctx.fillStyle = isHovered || isSelected ? T.canvas.labelHi : m.color;
-  ctx.font = `bold 13px ${T.fonts.mono}`;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(m.label, m.x + m.w / 2, m.y + m.h / 2 - 8);
+  // Gate label rendering on the toggle + zoom + interaction state so dense
+  // maps are legible when zoomed out and the "Toggle Labels" control has
+  // visible effect. Hovered/selected modules always show full labels.
+  const showPrimaryLabel = showAllLabels || isHovered || isSelected || viewScale >= 0.72;
+  const showSecondaryLabel = showAllLabels || isHovered || isSelected || viewScale >= 0.95;
 
-  ctx.fillStyle = isHovered || isSelected ? T.canvas.lineCountHi : T.canvas.lineCountDim;
-  ctx.font = `10px ${T.fonts.body}`;
-  ctx.fillText(m.subtitle || (m.lines + ' lines'), m.x + m.w / 2, m.y + m.h / 2 + 8);
+  if (showPrimaryLabel) {
+    ctx.fillStyle = isHovered || isSelected ? T.canvas.labelHi : m.color;
+    ctx.font = `bold 13px ${T.fonts.mono}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(m.label, m.x + m.w / 2, m.y + m.h / 2 - 8);
+  }
+
+  if (showSecondaryLabel) {
+    ctx.fillStyle = isHovered || isSelected ? T.canvas.lineCountHi : T.canvas.lineCountDim;
+    ctx.font = `10px ${T.fonts.body}`;
+    ctx.fillText(m.subtitle || (m.lines + ' lines'), m.x + m.w / 2, m.y + m.h / 2 + 8);
+  }
 
   const maxLines = Math.max(...modules.map(mod => mod.lines));
   const barW = m.w - 20, barH = 3, barX = m.x + 10, barY = m.y + m.h - 10;
